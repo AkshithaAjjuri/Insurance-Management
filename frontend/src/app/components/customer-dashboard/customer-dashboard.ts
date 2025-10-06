@@ -1,816 +1,623 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { CustomerService, PolicyProduct, MyPolicyResponse, Payment, PurchaseRequest, PaymentRequest } from '../../services/customer.service';
+import { AuthService } from '../../services/auth.service';
+import { CustomerService } from '../../services/customer.service';
+import { VerificationService } from '../../services/verification.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-customer-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, HttpClientModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './customer-dashboard.html'
 })
 export class CustomerDashboard implements OnInit {
-  showProfile() {
-    this.currentSection = 'profile';
-  }
-  showAvailablePolicies() {
-    this.currentSection = 'availablePolicies';
-    this.loadAvailablePolicies();
-  }
-  get recentApprovedClaims() {
-    return this.myClaims ? this.myClaims.filter(c => c.status === 'Approved').slice(0, 5) : [];
-  }
-  customerName = 'Customer User';
-  // Sidebar is always open; toggle functionality removed
-  
-  // Current section being displayed
-  currentSection = 'dashboard'; // dashboard, availablePolicies, myPolicies, payments, paymentHistory
-  
-  // Dashboard stats
-  stats = {
-    activePolicies: 0,
-    pendingClaims: 0,
-    totalPremiumPaid: 0,
-    upcomingPayments: 0
-  };
+  roleTitle = 'Customer';
+  userName = 'User';
+  // Data
+  isLoading = false;
+  errorMessage = '';
+  myPolicies: any[] = [];
+  payments: any[] = [];
+  catalog: any[] = [];
+  claimedPolicies: any[] = [];
+  claims: any[] = [];
+  allPoliciesCombined: any[] = [];
+  canceledPolicies: any[] = [];
+  paymentInstallments: Record<string, number> = {}; // paymentId -> installment number (1-based)
+  // paying state map per userPolicyId
+  paying: Record<string, boolean> = {};
+  successMessage = '';
 
-  // Data arrays
-  availablePolicies: PolicyProduct[] = [];
-  myPolicies: MyPolicyResponse[] = [];
-  paymentHistory: Payment[] = [];
-  recentActivities: any[] = [];
-  approvedPolicies: any[] = []; // Changed to any[] to handle admin response structure
-
-  // Modal states
+  // UI state
+  activeTab: string | null = null; // Start with null to show main dashboard
   showPurchaseModal = false;
-  showPaymentModal = false;
-  selectedPolicy: any | null = null; // Changed to any to handle UserPolicy with populated PolicyProduct
-  selectedUserPolicy: MyPolicyResponse | null = null;
+  purchaseForm: any = { policyProductId: '', startDate: '', nomineeName: '', nomineeRelation: '' };
+  purchaseError = '';
 
-  // Form data
-  purchaseForm: PurchaseRequest = {
-    policyProductId: '',
-    startDate: '',
-    nominee: {
-      name: '',
-      relation: ''
-    }
+  showClaimModal = false;
+  claimForm: any = { userPolicyId: '', incidentDate: '', description: '', amountClaimed: null };
+  claimError = '';
+
+  // Pay modal state
+  showPayModal = false;
+  payForm: any = { userPolicyId: '', method: 'Simulated' };
+  payContext: any = { code: '', title: '', premium: 0, termMonths: 0, paidCount: 0 };
+  payError = '';
+
+  // Cancel policy modal state
+  showCancelModal = false;
+  cancelContext: any = null;
+  cancelling = false;
+  cancelError = '';
+
+  // Policy details modal
+  showDetailsModal = false;
+  detailsContext: any = { policy: null, payments: [] };
+
+  // Payment details modal
+  showPaymentDetailsModal = false;
+  paymentDetailsContext: any = null;
+
+  // Success modal
+  showSuccessModal = false;
+  successModalData = {
+    title: '',
+    message: '',
+    icon: 'success' // 'success', 'payment', 'purchase', 'claim'
   };
 
-  paymentForm: PaymentRequest = {
-    userPolicyId: '',
-    amount: 0,
-    method: 'Simulated',
-    reference: ''
-  };
-
-  // Claims-related properties
-  myClaims: any[] = [];
-  filteredClaims: any[] = [];
-  loadingClaims = false;
-  claimStatusFilter = '';
-  claimStats = {
-    totalClaims: 0,
-    pendingClaims: 0,
-    approvedClaims: 0,
-    rejectedClaims: 0,
-    totalAmountClaimed: 0,
-    approvedAmount: 0
-  };
-
-  // File Claim Form
-  claimForm = {
-    userPolicyId: '',
-    incidentDate: '',
-    incidentType: '',
-    description: '',
-    amountClaimed: 0
-  };
-  
-  submittingClaim = false;
-  maxIncidentDate = new Date().toISOString().split('T')[0]; // Today's date
-
-  constructor(
-    private http: HttpClient,
-    private customerService: CustomerService
-  ) {}
-
-  ngOnInit() {
-    console.log('Customer Dashboard initialized');
-    
-    // FOR DEVELOPMENT: Set a test customer token if none exists
-    
-    // Load dashboard data (will use mock data if API fails)
-    this.loadDashboardData();
-    this.showDashboard();
-
-    this.loadAvailablePolicies();
-    this.loadApprovedPolicies();
+  // --- Helpers for premium scheduling ---
+  nextDueDate(p: any): Date | null {
+    if (!p) return null;
+    if ((p.status || '').toLowerCase() !== 'approved') return null; // only track for approved
+    const term = Number(p?._product?.termMonths ?? p?.policy?.termMonths ?? 0);
+    if (!term) return null;
+    const paid = this.countPaymentsForPolicy(p.userPolicyId || p._id);
+    if (paid >= term) return null; // completed
+    const start = new Date(p.startDate);
+    if (isNaN(start.getTime())) return null;
+    const due = new Date(start);
+    // Business rule (updated): Each installment is due monthly AFTER the start date.
+    // So the first payment is due at start + 1 month, second at start + 2 months, etc.
+    // Therefore next due month index = paid + 1.
+    due.setMonth(due.getMonth() + paid + 1);
+    return due;
   }
 
-  showDashboard() {
-    // This method can be expanded to set up dashboard view if needed
-    this.currentSection = 'dashboard';
+  isCompleted(p: any): boolean {
+    const term = Number(p?._product?.termMonths ?? p?.policy?.termMonths ?? 0);
+    const paid = this.countPaymentsForPolicy(p.userPolicyId || p._id);
+    return term > 0 && paid >= term;
   }
 
-  testApiConnection() {
-    console.log('Testing API connection...');
-    console.log('Testing direct HTTP call...');
-    // Test direct HTTP call without service
-    this.http.get('http://localhost:3000/api/v1/customers/ping').subscribe({
-      next: (response) => {
-        console.log('Direct HTTP SUCCESS:', response);
-        alert('Direct HTTP test successful!');
-        // Now test via service
-        console.log('Testing via service...');
-        this.customerService.ping().subscribe({
-          next: (serviceResponse) => {
-            console.log('Service call SUCCESS:', serviceResponse);
-            this.loadApprovedPolicies(); // Changed to load approved policies instead of all available policies
-          }
+  isOverdue(p: any): boolean {
+    const due = this.nextDueDate(p);
+    if (!due) return false;
+    const today = new Date();
+    // Overdue if today is strictly after end of due day
+    return today.getTime() > due.getTime() && !this.isCompleted(p);
+  }
+
+  isDueToday(p: any): boolean {
+    const due = this.nextDueDate(p);
+    if (!due) return false;
+    const today = new Date();
+    return today.getFullYear() === due.getFullYear() && today.getMonth() === due.getMonth() && today.getDate() === due.getDate();
+  }
+
+  formatDueDate(p: any): string {
+    if (this.isCompleted(p)) return 'Completed';
+    const due = this.nextDueDate(p);
+    if (!due) return '—';
+    const opts: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: '2-digit' };
+    const base = due.toLocaleDateString(undefined, opts);
+    if (this.isOverdue(p)) return base + ' (Overdue)';
+    if (this.isDueToday(p)) return base + ' (Today)';
+    return base;
+  }
+
+  constructor(private auth: AuthService, private router: Router, private customer: CustomerService, public verificationService: VerificationService) {
+    const role = (this.auth.getRole() || 'Customer').toString();
+    this.roleTitle = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+    const user = this.auth.getUser();
+    this.userName = user?.name || user?.email || 'User';
+  }
+
+  setActiveTab(tab: string | null) {
+    this.activeTab = tab;
+  }
+
+  showSuccessMessage(title: string, message: string, icon: string = 'success') {
+    this.successModalData = { title, message, icon };
+    this.showSuccessModal = true;
+    // Auto close after 3 seconds
+    setTimeout(() => {
+      this.showSuccessModal = false;
+    }, 3000);
+  }
+
+  closeSuccessModal() {
+    this.showSuccessModal = false;
+  }
+
+  ngOnInit(): void {
+    this.loadAll();
+  }
+
+  loadAll() {
+    this.isLoading = true;
+    this.errorMessage = '';
+    forkJoin({
+      myp: this.customer.getMyPolicies(),
+      pays: this.customer.getMyPayments(),
+      cat: this.customer.getCatalogPolicies(),
+      cls: this.customer.getMyClaims()
+    }).subscribe({
+      next: ({ myp, pays, cat, cls }) => {
+        const allPolicies = (myp?.policies || []).map((p: any) => ({
+          ...p,
+          _product: p.policy || null
+        }));
+        this.claimedPolicies = allPolicies.filter((p: any) => (p.status || '').toLowerCase() === 'claimed');
+        this.canceledPolicies = allPolicies.filter((p: any) => (p.status || '').toLowerCase() === 'cancelled');
+        // My Policies now excludes claimed & cancelled
+        this.myPolicies = allPolicies.filter((p: any) => {
+          const st = (p.status || '').toLowerCase();
+            return st !== 'claimed' && st !== 'cancelled';
         });
-      }
-    });
-  }
-
-  showMyPolicies() {
-    this.currentSection = 'myPolicies';
-    this.loadMyPolicies();
-  }
-
-  showApprovedPolicies() {
-    this.currentSection = 'approvedPolicies';
-    this.loadApprovedPolicies();
-  }
-
-  showBuyPolicy() {
-    this.currentSection = 'buyPolicy';
-    this.loadAvailablePoliciesForPurchase(); // Load admin-created policies for purchase
-  }
-
-  showPayments() {
-    this.currentSection = 'payments';
-    this.loadMyPolicies(); // Load policies that can receive payments
-    this.loadApprovedPolicies(); // Also load admin-approved policies
-  }
-
-  showPaymentHistory() {
-    this.currentSection = 'paymentHistory';
-    this.loadPaymentHistory();
-  }
-
-  // toggleSidebar method removed
-
-  // Data loading methods
-  loadDashboardData() {
-    this.loadAvailablePolicies();
-    this.loadMyPolicies();
-    this.loadPaymentHistory();
-    this.calculateStats();
-  }
-
-  // loadAvailablePolicies() {
-  //   console.log('Loading available policies...');
-  //   this.customerService.getAvailablePolicies().subscribe({
-  //     next: (response) => {
-  //       if (response.success && response.policies) {
-  //         this.availablePolicies = response.policies;
-  //         console.log('Available policies loaded:', this.availablePolicies);
-  //       } else {
-  //         console.error('Failed to load policies:', response.message);
-  //       }
-  //     },
-  //     error: (err) => {
-  //       console.error('Error loading policies:', err);
-  //     }
-  //   });
-  // }
-
-  // filepath: c:\Users\Ascendion\Desktop\Insurance-App\Insurance-Application\frontend\src\app\components\customer-dashboard\customer-dashboard.component.ts
-loadAvailablePolicies() {
-  const token = localStorage.getItem('token') || localStorage.getItem('customer_token');
-  const headers = { 'Authorization': `Bearer ${token}` };
-
-  this.http.get('http://localhost:3000/api/v1/customers/availablepolicies', { headers }).subscribe({
-    next: (response: any) => {
-      if (response.success) {
-        this.availablePolicies = response.policies || [];
-      } else {
-        this.availablePolicies = [];
-      }
-    },
-    error: (error) => {
-      console.error('Error loading available policies:', error);
-      this.availablePolicies = [];
-    }
-  });
-}
-
-  loadMyPolicies() {
-    console.log('Loading my policies...');
-    this.customerService.getMyPolicies().subscribe({
-      next: (response) => {
-        console.log('My policies response:', response);
-        if (response.success && response.policies) {
-          // Show all policies for the customer (no deduplication)
-          this.myPolicies = response.policies.filter(p => p && p.policy && p.policy.title);
-          console.log('My policies loaded:', this.myPolicies);
-        } else {
-          console.log('No policies in response or response failed:', response);
-          this.myPolicies = [];
-        }
-      },
-      error: (error) => {
-        console.error('Error loading my policies:', error);
-        console.error('Error details:', error.error);
-        if (error.status === 0) {
-          alert('Cannot connect to server. Please make sure the backend is running.');
-        } else if (error.status === 401 || error.status === 403) {
-          alert('Authentication failed. Please login again.');
-        } else {
-          alert('Failed to load your policies: ' + (error.error?.message || error.message || 'Unknown error'));
-        }
-        this.myPolicies = [];
-      }
-    });
-  }
-
-  loadPaymentHistory() {
-    this.customerService.getPaymentHistory().subscribe({
-      next: (response) => {
-        if (response.success && response.payments) {
-          this.paymentHistory = response.payments;
-          console.log('Payment history loaded:', this.paymentHistory);
-        }
-      },
-      error: (error) => {
-        console.error('Error loading payment history:', error);
-        alert('Failed to load payment history');
-      }
-    });
-  }
-
-  loadApprovedPolicies() {
-    console.log('Loading approved policies...');
-    this.customerService.getApprovedPolicies().subscribe({
-      next: (response: { success: boolean; policies?: any[]; message?: string }) => {
-        if (response.success && response.policies) {
-          // Deduplicate for claim dropdown by policy name and code
-          const seen = new Set();
-          this.approvedPolicies = response.policies.filter(p => {
-            const name = p?.policyProductId?.title || p?.title || '';
-            const code = p?.policyProductId?.code || p?.code || '';
-            const key = name + '|' + code;
-            if (!name || !code) return false;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+        // Sort all policies by code and enrich with agent details
+        this.allPoliciesCombined = allPolicies
+          .map((p: any) => {
+            let agentDetails = null;
+            const prod = p._product || p.policy || {};
+            // Try to get agent info from assignedAgentId or assignedAgentName
+            if (prod.assignedAgentId && typeof prod.assignedAgentId === 'object') {
+              agentDetails = {
+                name: prod.assignedAgentId.name,
+                email: prod.assignedAgentId.email,
+                agentCode: prod.assignedAgentId.agentCode
+              };
+            } else if (prod.assignedAgentName) {
+              agentDetails = { name: prod.assignedAgentName };
+            }
+            // Fallback to assignedAgentId on UserPolicy if populated
+            if (!agentDetails && p.assignedAgentId && typeof p.assignedAgentId === 'object') {
+              agentDetails = {
+                name: p.assignedAgentId.name,
+                email: p.assignedAgentId.email,
+                agentCode: p.assignedAgentId.agentCode
+              };
+            }
+            return { ...p, agentDetails };
+          })
+          .sort((a: any, b: any) => {
+            const codeA = (a._product?.code || a.policy?.code || '').toString().toLowerCase();
+            const codeB = (b._product?.code || b.policy?.code || '').toString().toLowerCase();
+            return codeA.localeCompare(codeB);
           });
-          // If deduplication removed all, fallback to original
-          if (this.approvedPolicies.length === 0 && response.policies.length > 0) {
-            this.approvedPolicies = response.policies;
-          }
-          console.log('Approved policies loaded (deduped for claim dropdown):', this.approvedPolicies);
-        } else {
-          console.error('Failed to load approved policies:', response.message);
-          this.approvedPolicies = [];
-        }
-      },
-      error: (err: any) => {
-        console.error('Error loading approved policies:', err);
-        this.approvedPolicies = [];
-      }
-    });
-  }
-
-  loadAvailablePoliciesForPurchase() {
-    console.log('Loading available policies for purchase...');
-    this.customerService.getAvailablePoliciesForPurchase().subscribe({
-      next: (response: { success: boolean; policies?: any[]; message?: string }) => {
-        if (response.success && response.policies) {
-          this.availablePolicies = response.policies;
-          console.log('Available policies for purchase loaded:', this.availablePolicies);
-        } else {
-          console.error('Failed to load available policies:', response.message);
-          this.availablePolicies = [];
-        }
-      },
-      error: (err: any) => {
-        console.error('Error loading available policies:', err);
-        this.availablePolicies = [];
-      }
-    });
-  }
-
-  loadClaimablePolicies() {
-    console.log('Loading claimable policies (with completed payments)...');
-    const token = localStorage.getItem('token') || localStorage.getItem('customer_token');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    this.http.get<any>('http://localhost:3000/api/v1/customers/claimablepolicies', { headers }).subscribe({
-      next: (response) => {
-        console.log('Claimable policies response:', response);
-        if (response.success && response.policies) {
-          this.approvedPolicies = response.policies;
-          console.log('Claimable policies loaded:', this.approvedPolicies);
-        } else {
-          console.error('Failed to load claimable policies:', response.message);
-          this.approvedPolicies = [];
-        }
-      },
-      error: (err: any) => {
-        console.error('Error loading claimable policies:', err);
-        this.approvedPolicies = [];
-      }
-    });
-  }
-
-  calculateStats() {
-    // Calculate stats from loaded data
-    this.stats.activePolicies = this.myPolicies.filter(p => p.status === 'Approved').length;
-    this.stats.totalPremiumPaid = this.paymentHistory.reduce((total, payment) => total + payment.amount, 0);
-    this.stats.pendingClaims = 0; // TODO: Implement claims functionality
-    this.stats.upcomingPayments = this.myPolicies.filter(p => p.status === 'Approved').length;
-  }
-
-  // Purchase policy functionality
-  selectPolicy(policy: any) {
-    // Handle approved policy selection
-    this.selectedPolicy = policy;
-    // You can either open a purchase modal or navigate to policy details
-    // For now, let's show a simple confirmation
-    const confirmPurchase = confirm(`Do you want to proceed with ${policy.policyProductId?.title}?`);
-    if (confirmPurchase) {
-      this.openPurchaseModalForApproved(policy);
-    }
-  }
-
-  openPurchaseModalForApproved(policy: any) {
-    this.selectedPolicy = policy;
-    this.purchaseForm = {
-      policyProductId: policy.policyProductId?._id || policy._id,
-      startDate: new Date().toISOString().split('T')[0], // Today's date
-      nominee: {
-        name: '',
-        relation: ''
-      }
-    };
-    this.showPurchaseModal = true;
-  }
-
-  openPurchaseModal(policy: PolicyProduct) {
-    this.selectedPolicy = policy;
-    this.purchaseForm = {
-      policyProductId: policy._id,
-      startDate: new Date().toISOString().split('T')[0], // Today's date
-      nominee: {
-        name: '',
-        relation: ''
-      }
-    };
-    this.showPurchaseModal = true;
-  }
-
-  closePurchaseModal() {
-    this.showPurchaseModal = false;
-    this.selectedPolicy = null;
-    this.purchaseForm = {
-      policyProductId: '',
-      startDate: '',
-      nominee: { name: '', relation: '' }
-    };
-  }
-
-  purchasePolicy() {
-    if (!this.purchaseForm.startDate) {
-      alert('Please select a start date');
-      return;
-    }
-
-    this.customerService.purchasePolicy(this.purchaseForm).subscribe({
-      next: (response) => {
-        if (response.success) {
-          alert('Policy purchased successfully! It is now pending approval.');
-          this.closePurchaseModal();
-          this.loadMyPolicies(); // Refresh my policies
-          this.calculateStats();
-        } else {
-          alert('Failed to purchase policy: ' + (response.message || 'Unknown error'));
-        }
-      },
-      error: (error) => {
-        console.error('Error purchasing policy:', error);
-        alert('Failed to purchase policy: ' + (error.error?.message || error.message || 'Network error'));
-      }
-    });
-  }
-
-  // Payment functionality
-  openPaymentModal(userPolicy: MyPolicyResponse) {
-    this.selectedUserPolicy = userPolicy;
-    this.paymentForm = {
-      userPolicyId: userPolicy.userPolicyId,
-      amount: userPolicy.policy.minSumInsured / 12, // Monthly premium estimate
-      method: 'Simulated',
-      reference: `PAY_${Date.now()}`
-    };
-    this.showPaymentModal = true;
-  }
-
-  // Open purchase modal for admin-created policies
-  openPaymentModalForApproved(policy: any) {
-    // This should open purchase modal, not payment modal
-    // Since these are admin-created policies available for purchase
-    this.selectedPolicy = policy;
-    this.purchaseForm = {
-      policyProductId: policy.policyId || policy._id,
-      startDate: '',
-      nominee: {
-        name: '',
-        relation: ''
-      }
-    };
-    this.showPurchaseModal = true;
-  }
-
-  // Open payment modal for policies (purchase policy first, then pay)
-  openPaymentModalForPolicy(policy: any) {
-    this.selectedPolicy = policy;
-    
-    // First purchase the policy to create a UserPolicy
-    const purchaseData = {
-      policyProductId: policy._id,
-      startDate: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0], // Tomorrow's date
-      nominee: {
-        name: 'Default Nominee',
-        relation: 'Self'
-      }
-    };
-    
-    this.customerService.purchasePolicy(purchaseData).subscribe({
-      next: (response) => {
-        if (response.success && response.userPolicy) {
-          // Now open payment modal with the userPolicy ID
-          this.paymentForm = {
-            userPolicyId: response.userPolicy._id,
-            amount: policy.price || policy.minSumInsured || 1000,
-            method: 'Simulated',
-            reference: `PAY_${Date.now()}_POLICY`
-          };
-          this.showPaymentModal = true;
-        } else {
-          alert('Failed to purchase policy: ' + (response.message || 'Unknown error'));
-        }
+        this.payments = pays?.payments || [];
+        // Sort catalog by code and enrich with agent details
+        this.catalog = (cat?.policies || [])
+          .map((pol: any) => {
+            let agentDetails = null;
+            if (pol.assignedAgentId && typeof pol.assignedAgentId === 'object') {
+              agentDetails = {
+                name: pol.assignedAgentId.name,
+                email: pol.assignedAgentId.email,
+                agentCode: pol.assignedAgentId.agentCode
+              };
+            } else if (pol.assignedAgentName) {
+              agentDetails = { name: pol.assignedAgentName };
+            }
+            return { ...pol, agentDetails };
+          })
+          .sort((a: any, b: any) => {
+            const codeA = (a.code || '').toString().toLowerCase();
+            const codeB = (b.code || '').toString().toLowerCase();
+            return codeA.localeCompare(codeB);
+          });
+        this.claims = (cls?.claims || []);
+        this.computePaymentInstallments();
       },
       error: (err) => {
-        alert('Error purchasing policy: ' + err.message);
-      }
-    });
-  }
-
-  closePaymentModal() {
-    this.showPaymentModal = false;
-    this.selectedUserPolicy = null;
-    this.paymentForm = {
-      userPolicyId: '',
-      amount: 0,
-      method: 'Simulated',
-      reference: ''
-    };
-  }
-
-  makePayment() {
-    if (this.paymentForm.amount <= 0) {
-      alert('Please enter a valid payment amount');
-      return;
-    }
-
-    this.customerService.makePayment(this.paymentForm).subscribe({
-      next: (response) => {
-        if (response.success) {
-          alert('Payment made successfully!');
-          this.closePaymentModal();
-          this.loadPaymentHistory(); // Refresh payment history
-          this.calculateStats();
-        } else {
-          alert('Failed to make payment: ' + (response.message || 'Unknown error'));
-        }
+        this.errorMessage = err?.error?.message || err?.message || 'Failed to load customer data';
       },
-      error: (err) => {
-        alert('Error making payment: ' + err.message);
+      complete: () => {
+        this.isLoading = false;
       }
     });
   }
 
   logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('customer_token');
-    localStorage.removeItem('userRole');
-    window.location.href = '/home';
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 
-  // Claims Navigation Methods
-  showMyClaims() {
-    this.currentSection = 'myClaims';
-    this.loadMyClaims();
+  // Purchase flow
+  openPurchase(policy: any) {
+    this.purchaseForm = {
+      policyProductId: policy?._id || policy?.policyProductId || '',
+      startDate: new Date().toISOString().substring(0, 10),
+      nomineeName: '',
+      nomineeRelation: ''
+    };
+    this.purchaseError = '';
+    this.showPurchaseModal = true;
   }
 
-  showFileClaim() {
-    this.currentSection = 'fileClaim';
-    this.loadClaimablePolicies(); // Load policies with completed payments for claim form
-  }
-
-  openClaimModal(policy: any) {
-    // Set the selected policy for claim and navigate to File Claim section
-    this.selectedPolicy = policy;
-    this.claimForm.userPolicyId = policy.userPolicyId;
-    this.showFileClaim(); // Navigate to file claim section with pre-selected policy
-  }
-
-  // Claims Data Loading
-  loadMyClaims() {
-    this.loadingClaims = true;
-    const token = localStorage.getItem('token') || localStorage.getItem('customer_token');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    
-    this.http.get<any>('http://localhost:3000/api/v1/customers/myclaims', { headers }).subscribe({
-      next: (response) => {
-        console.log('My claims response:', response);
-        this.loadingClaims = false;
-        
-        if (response.success) {
-          this.myClaims = response.claims || [];
-          this.claimStats = response.stats || this.claimStats;
-          this.filterClaims();
-        } else {
-          console.error('Failed to load claims:', response.message);
-          this.myClaims = [];
-          this.filteredClaims = [];
-        }
+  submitPurchase() {
+    const { policyProductId, startDate, nomineeName, nomineeRelation } = this.purchaseForm;
+    const payload: any = { policyProductId, startDate };
+    if (nomineeName && nomineeRelation) {
+      payload.nominee = { name: nomineeName, relation: nomineeRelation };
+    }
+    this.purchaseError = '';
+    this.customer.purchasePolicy(payload).subscribe({
+      next: () => {
+        this.showPurchaseModal = false;
+        this.showSuccessMessage(
+          'Policy Purchased Successfully!', 
+          'Your policy has been purchased and is pending approval from an agent.',
+          'purchase'
+        );
+        this.loadAll();
       },
       error: (err) => {
-        console.error('Error loading claims:', err);
-        this.loadingClaims = false;
-        this.myClaims = [];
-        this.filteredClaims = [];
-        alert('Error loading claims: ' + err.message);
+        this.purchaseError = err?.error?.message || (Array.isArray(err?.error?.error) ? err.error.error[0]?.message : '') || 'Purchase failed';
       }
     });
   }
 
-  filterClaims() {
-    if (!this.claimStatusFilter) {
-      this.filteredClaims = [...this.myClaims];
-    } else {
-      this.filteredClaims = this.myClaims.filter(claim => claim.status === this.claimStatusFilter);
-    }
-  }
-
-  // Claim Form Methods
-  onPolicySelected() {
-    const policyId = this.claimForm.userPolicyId;
-    this.selectedPolicy = this.approvedPolicies.find(policy => policy._id === policyId) || null;
-    
-    // Reset amount when policy changes
-    this.claimForm.amountClaimed = 0;
-  }
-
-  resetClaimForm() {
+  // Claim flow
+  openRaiseClaim(p: any) {
     this.claimForm = {
-      userPolicyId: '',
-      incidentDate: '',
-      incidentType: '',
+      userPolicyId: p.userPolicyId,
+      incidentDate: new Date().toISOString().substring(0, 10),
       description: '',
-      amountClaimed: 0
+      amountClaimed: null
     };
-    this.selectedPolicy = null;
+    this.claimError = '';
+    this.showClaimModal = true;
   }
 
   submitClaim() {
-    if (!this.validateClaimForm()) {
-      return;
-    }
-
-    this.submittingClaim = true;
-    const token = localStorage.getItem('token') || localStorage.getItem('customer_token');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-
-    const claimData = {
-      userPolicyId: this.claimForm.userPolicyId,
-      incidentDate: this.claimForm.incidentDate,
-      incidentType: this.claimForm.incidentType,
-      description: this.claimForm.description,
-      amountClaimed: this.claimForm.amountClaimed
-    };
-
-    console.log('Submitting claim:', claimData);
-
-    this.http.post<any>('http://localhost:3000/api/v1/customers/raiseclaim', claimData, { headers }).subscribe({
-      next: (response) => {
-        console.log('Claim submission response:', response);
-        this.submittingClaim = false;
-        
-        if (response.success) {
-          alert('Claim submitted successfully! You will be notified of status updates.');
-          this.resetClaimForm();
-          this.showMyClaims(); // Navigate to claims list
-        } else {
-          alert('Failed to submit claim: ' + (response.message || 'Unknown error'));
-        }
+    const { userPolicyId, incidentDate, description, amountClaimed } = this.claimForm;
+    this.claimError = '';
+    this.customer.raiseClaim({ userPolicyId, incidentDate, description, amountClaimed: Number(amountClaimed) }).subscribe({
+      next: () => {
+        this.showClaimModal = false;
+        this.showSuccessMessage(
+          'Claim Submitted Successfully!',
+          'Your claim has been submitted and is under review. You will be notified of the status.',
+          'claim'
+        );
+        this.successMessage = 'Claim submitted successfully.';
+        // Refresh claims list (quick incremental fetch)
+        this.customer.getMyClaims().subscribe({
+          next: (res: any) => { this.claims = res?.claims || this.claims; },
+          error: () => {}
+        });
       },
       error: (err) => {
-        console.error('Error submitting claim:', err);
-        this.submittingClaim = false;
-        
-        let errorMessage = 'Error submitting claim';
-        if (err.error && err.error.message) {
-          errorMessage += ': ' + err.error.message;
-        } else if (err.error && err.error.errors && err.error.errors.length > 0) {
-          errorMessage += ': ' + err.error.errors.join(', ');
-        }
-        
-        alert(errorMessage);
+        this.claimError = err?.error?.message || 'Failed to raise claim';
       }
     });
   }
 
-  validateClaimForm(): boolean {
-    if (!this.claimForm.userPolicyId) {
-      alert('Please select a policy');
-      return false;
-    }
-
-    if (!this.claimForm.incidentDate) {
-      alert('Please select incident date');
-      return false;
-    }
-
-    if (!this.claimForm.incidentType) {
-      alert('Please select incident type');
-      return false;
-    }
-
-    if (!this.claimForm.description || this.claimForm.description.trim().length < 10) {
-      alert('Please provide a detailed description (minimum 10 characters)');
-      return false;
-    }
-
-    if (this.claimForm.amountClaimed <= 0) {
-      alert('Please enter a valid claim amount');
-      return false;
-    }
-
-    if (this.selectedPolicy && this.claimForm.amountClaimed > this.selectedPolicy.policyProductId?.minSumInsured) {
-      alert(`Claim amount cannot exceed policy coverage of $${this.selectedPolicy.policyProductId?.minSumInsured}`);
-      return false;
-    }
-
-    // Validate incident date
-    const incidentDate = new Date(this.claimForm.incidentDate);
-    const today = new Date();
-    
-    // Find the user policy to get start date
-    const userPolicy = this.approvedPolicies.find(p => p._id === this.claimForm.userPolicyId);
-    const policyStart = userPolicy ? new Date(userPolicy.startDate) : null;
-
-    if (incidentDate > today) {
-      alert('Incident date cannot be in the future');
-      return false;
-    }
-
-    if (policyStart && incidentDate < policyStart) {
-      alert('Incident date cannot be before policy start date');
-      return false;
-    }
-
-    return true;
-  }
-
-  viewClaimDetails(claim: any) {
-    const claimDetails = `
-CLAIM DETAILS
-=============
-
-Claim ID: ${claim._id}
-Policy: ${claim.userPolicyId?.policyProductId?.title || 'Unknown Policy'} (${claim.userPolicyId?.policyProductId?.code || 'No code'})
-Status: ${claim.status}
-Filed Date: ${new Date(claim.createdAt).toLocaleString()}
-
-INCIDENT INFORMATION:
-Incident Date: ${new Date(claim.incidentDate).toLocaleDateString()}
-Incident Type: ${claim.incidentType || 'Not specified'}
-Amount Claimed: $${claim.amountClaimed?.toFixed(2)}
-
-DESCRIPTION:
-${claim.description}
-
-${claim.decisionNotes ? 'DECISION NOTES:\n' + claim.decisionNotes : ''}
-${claim.decidedByAgentId ? 'Reviewed by: ' + (claim.decidedByAgentId.name || 'Agent') : ''}
-    `;
-    
-    alert(claimDetails);
-  }
-
-  // Cancel Policy Methods
-  showCancelConfirmation = false;
-  policyToCancel: any = null;
-  cancellingPolicy = false;
-
-  openCancelConfirmation(policy: any) {
-    if (policy.status !== 'Approved') {
-      alert('Only approved policies can be cancelled.');
-      return;
-    }
-    
-    this.policyToCancel = policy;
-    this.showCancelConfirmation = true;
-    console.log('Opening cancel confirmation for policy:', policy);
-  }
-
-  closeCancelConfirmation() {
-    this.showCancelConfirmation = false;
-    this.policyToCancel = null;
-  }
-
-  confirmCancelPolicy() {
-    if (!this.policyToCancel) {
-      return;
-    }
-
-    this.cancellingPolicy = true;
-    console.log('Cancelling policy:', this.policyToCancel.userPolicyId);
-
-    const token = localStorage.getItem('customer_token') || localStorage.getItem('token');
-    
-    if (!token) {
-      alert('Please login to cancel policy');
-      this.closeCancelConfirmation();
-      this.cancellingPolicy = false;
-      return;
-    }
-
-    const headers = { 
-      'Authorization': `Bearer ${token}`, 
-      'Content-Type': 'application/json' 
+  // Open global claim center (without pre-selecting a policy)
+  openClaimCenter() {
+    const list = this.approvedClaimablePolicies();
+    this.claimForm = {
+      userPolicyId: list.length === 1 ? (list[0].userPolicyId || list[0]._id) : '',
+      incidentDate: new Date().toISOString().substring(0, 10),
+      description: '',
+      amountClaimed: null
     };
+    this.claimError = '';
+    this.showClaimModal = true;
+  }
 
-    const requestData = {
-      userPolicyId: this.policyToCancel.userPolicyId
+  // Filter only approved, non-claimed policies
+  approvedClaimablePolicies() {
+    const approved = (this.myPolicies || []).filter(p => (p.status || '').toLowerCase() === 'approved');
+    return approved;
+  }
+
+  // Claims filtered helpers
+  recentClaims(limit = 5) {
+    return [...(this.claims || [])].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, limit);
+  }
+
+  // Cancel policy
+  cancelPolicy(p: any) {
+    if (!p) return;
+    this.cancelContext = p;
+    this.cancelError = '';
+    this.showCancelModal = true;
+  }
+
+  performCancel() {
+    if (!this.cancelContext) return;
+    const upId = this.cancelContext.userPolicyId || this.cancelContext._id;
+    if (!upId) { this.cancelError = 'Missing policy reference.'; return; }
+    this.cancelling = true;
+    this.cancelError = '';
+    this.customer.cancelPolicy(upId).subscribe({
+      next: () => {
+        this.cancelling = false;
+        this.showCancelModal = false;
+        this.showSuccessMessage(
+          'Policy Cancelled Successfully',
+          'Your policy has been cancelled. You will receive a confirmation email shortly.',
+          'success'
+        );
+        this.cancelContext = null;
+        this.loadAll();
+      },
+      error: (err) => {
+        this.cancelling = false;
+        this.cancelError = err?.error?.message || 'Failed to cancel policy';
+      }
+    });
+  }
+
+  closeCancelModal() {
+    if (this.cancelling) return; // prevent closing mid-request
+    this.showCancelModal = false;
+    this.cancelContext = null;
+    this.cancelError = '';
+  }
+
+  // --- Payments: pay current month for an approved policy ---
+  payMonthly(p: any) {
+    const userPolicyId: string = p?.userPolicyId || p?._id;
+    if (!userPolicyId) { alert('Missing policy reference'); return; }
+    if ((p?.status || '').toLowerCase() !== 'approved') { alert('Policy must be approved to pay'); return; }
+    const premium = Number(p?._product?.premium ?? p?.policy?.premium ?? 0);
+    const term = Number(p?._product?.termMonths ?? p?.policy?.termMonths ?? 0);
+    if (!premium || premium <= 0) { alert('Invalid premium amount on policy'); return; }
+    const paidCount = this.countPaymentsForPolicy(userPolicyId);
+    if (term && paidCount >= term) { alert('All term payments completed'); return; }
+
+    // Open Pay modal with auto-filled info
+    this.payForm = { userPolicyId, method: 'Simulated' };
+    this.payContext = {
+      code: p?._product?.code || p?.policy?.code || '',
+      title: p?._product?.title || p?.policy?.title || '',
+      premium,
+      termMonths: term,
+      paidCount
     };
+    this.payError = '';
+    this.showPayModal = true;
+  }
 
-    this.http.post<any>('http://localhost:3000/api/v1/customers/cancelpolicy', requestData, { headers })
-      .subscribe({
-        next: (response) => {
-          console.log('Policy cancel response:', response);
-          if (response.success) {
-            alert('Policy cancelled successfully!');
-            
-            // Update the policy status in the local array
-            const policyIndex = this.myPolicies.findIndex(p => p.userPolicyId === this.policyToCancel.userPolicyId);
-            if (policyIndex !== -1) {
-              this.myPolicies[policyIndex].status = 'Cancelled';
-            }
-            
-            // Refresh the policies list
-            this.loadMyPolicies();
-            
-            this.closeCancelConfirmation();
-          } else {
-            alert('Failed to cancel policy: ' + (response.message || 'Unknown error'));
-          }
-          this.cancellingPolicy = false;
-        },
-        error: (error) => {
-          console.error('Error cancelling policy:', error);
-          let errorMessage = 'Error cancelling policy';
-          
-          if (error.error?.message) {
-            errorMessage = error.error.message;
-          } else if (error.message) {
-            errorMessage = error.message;
-          }
-          
-          alert(errorMessage);
-          this.cancellingPolicy = false;
+  submitPayment() {
+    const { userPolicyId, method } = this.payForm || {};
+    if (!userPolicyId || !method) { this.payError = 'Please select a payment method.'; return; }
+    this.payError = '';
+    this.paying[userPolicyId] = true;
+    this.successMessage = '';
+    this.customer.makePayment({ userPolicyId, method }).subscribe({
+      next: (resp: any) => {
+        this.showPayModal = false;
+        this.showSuccessMessage(
+          'Payment Successful!',
+          `Payment of ₹${this.payContext.premium} has been processed successfully using ${method}.`,
+          'payment'
+        );
+        this.successMessage = resp?.message || 'Payment successful for this month.';
+        // Refresh only payments
+        this.customer.getMyPayments().subscribe({
+          next: (pays: any) => {
+            this.payments = pays?.payments || [];
+            this.computePaymentInstallments();
+            this.computePaymentInstallments();
+          },
+          error: () => {}
+        });
+        // Update the count in modal context if provided
+        if (resp?.meta?.paidCount != null) {
+          this.payContext.paidCount = resp.meta.paidCount;
         }
-      });
+      },
+      error: (err) => {
+        this.payError = err?.error?.message || 'Payment failed';
+      },
+      complete: () => {
+        this.paying[userPolicyId] = false;
+      }
+    });
   }
 
-  getStatusColor(status: string): string {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-        return 'bg-green-200 text-green-800';
-      case 'pending':
-        return 'bg-yellow-200 text-yellow-800';
-      case 'rejected':
-        return 'bg-red-200 text-red-800';
-      case 'active':
-        return 'bg-blue-200 text-blue-800';
-      case 'paid':
-        return 'bg-purple-200 text-purple-800';
-      default:
-        return 'bg-gray-200 text-gray-800';
+  // Count number of payments recorded for a specific user policy
+  countPaymentsForPolicy(userPolicyId: string): number {
+    return this.payments.filter((pay: any) => {
+      const id = typeof pay?.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+      return id === userPolicyId;
+    }).length;
+  }
+
+  // Map a payment row to policy code/title for display
+  policyLabelForPayment(pay: any): string {
+    const pid = typeof pay?.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+    let mp = this.myPolicies.find(x => (x?.userPolicyId || x?._id) === pid)
+      || this.claimedPolicies.find(x => (x?.userPolicyId || x?._id) === pid)
+      || this.canceledPolicies.find(x => (x?.userPolicyId || x?._id) === pid);
+    const code = mp?._product?.code || mp?.policy?.code || pid || '-';
+    const title = mp?._product?.title || mp?.policy?.title || '';
+    return title ? `${code} — ${title}` : `${code}`;
+  }
+
+  private computePaymentInstallments() {
+    this.paymentInstallments = {};
+    if (!this.payments?.length) return;
+    // Group payments by policy
+    const grouped: Record<string, any[]> = {};
+    for (const pay of this.payments) {
+      const upId = typeof pay.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+      if (!upId) continue;
+      if (!grouped[upId]) grouped[upId] = [];
+      grouped[upId].push(pay);
     }
+    Object.keys(grouped).forEach(upId => {
+      grouped[upId].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      grouped[upId].forEach((p, idx) => {
+        const pid = p._id || `${upId}-${idx}`;
+        this.paymentInstallments[pid] = idx + 1; // 1-based installment number
+      });
+    });
+  }
+
+  paymentInstallmentLabel(pay: any): string {
+    const upId = typeof pay.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+    const mp = this.myPolicies.find(x => (x?.userPolicyId || x?._id) === upId);
+    const total = Number(mp?._product?.termMonths ?? mp?.policy?.termMonths ?? 0) || 0;
+    const inst = this.paymentInstallments[pay._id] || '?';
+    return total ? `${inst} / ${total}` : `${inst}`;
+  }
+
+  private formatMonthYear(d: Date | null): string {
+    if (!d) return '-';
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+
+  paymentDueMonth(pay: any): string {
+    if (!pay) return '-';
+    const inst = this.paymentInstallments[pay._id];
+    if (!inst) return '-';
+    const upId = typeof pay.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+    const mp = this.myPolicies.find(x => (x?.userPolicyId || x?._id) === upId);
+    if (!mp) return '-';
+    const start = new Date(mp.startDate);
+    if (isNaN(start.getTime())) return '-';
+    // Installment n due at start + n months (business rule)
+    const due = new Date(start);
+    due.setMonth(due.getMonth() + inst);
+    return this.formatMonthYear(due);
+  }
+
+  // --- Policy Details Modal ---
+  openPolicyDetails(p: any) {
+    const userPolicyId: string = p?.userPolicyId || p?._id;
+    // Enrich agent details for modal
+    let agentDetails = null;
+    const prod = p._product || p.policy || {};
+    if (prod.assignedAgentId && typeof prod.assignedAgentId === 'object') {
+      agentDetails = {
+        name: prod.assignedAgentId.name,
+        email: prod.assignedAgentId.email,
+        agentCode: prod.assignedAgentId.agentCode
+      };
+    } else if (prod.assignedAgentName) {
+      agentDetails = { name: prod.assignedAgentName };
+    }
+    if (!agentDetails && p.assignedAgentId && typeof p.assignedAgentId === 'object') {
+      agentDetails = {
+        name: p.assignedAgentId.name,
+        email: p.assignedAgentId.email,
+        agentCode: p.assignedAgentId.agentCode
+      };
+    }
+    const policyRef = { ...p, agentDetails };
+    const relatedPayments = this.payments
+      .filter(pay => {
+        const id = typeof pay?.userPolicyId === 'string' ? pay.userPolicyId : pay?.userPolicyId?._id;
+        return id === userPolicyId;
+      })
+      .map(pay => ({
+        ...pay,
+        installment: this.paymentInstallments[pay._id] || null,
+        dueMonth: this.paymentDueMonth(pay)
+      }))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    this.detailsContext = { policy: policyRef, payments: relatedPayments };
+    this.showDetailsModal = true;
+  }
+
+  closePolicyDetails() {
+    this.showDetailsModal = false;
+    this.detailsContext = { policy: null, payments: [] };
+  }
+
+  // Get policy icon based on policy type
+  getPolicyIcon(policy: any): { icon: string; color: string; bgColor: string } {
+    const code = (policy.code || '').toLowerCase();
+    const title = (policy.title || '').toLowerCase();
+    
+    // Health/Medical Insurance
+    if (code.includes('health') || title.includes('health') || title.includes('medical')) {
+      return {
+        icon: 'health',
+        color: 'text-red-600',
+        bgColor: 'bg-red-100'
+      };
+    }
+    
+    // Auto/Car Insurance
+    if (code.includes('auto') || code.includes('car') || title.includes('auto') || title.includes('car')) {
+      return {
+        icon: 'car',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100'
+      };
+    }
+    
+    // Life Insurance
+    if (code.includes('life') || title.includes('life')) {
+      return {
+        icon: 'life',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100'
+      };
+    }
+    
+    // Home/House Insurance
+    if (code.includes('home') || code.includes('house') || title.includes('home') || title.includes('house')) {
+      return {
+        icon: 'home',
+        color: 'text-green-600',
+        bgColor: 'bg-green-100'
+      };
+    }
+    
+    // Bike/Motorcycle Insurance
+    if (code.includes('bike') || code.includes('motorcycle') || title.includes('bike') || title.includes('motorcycle')) {
+      return {
+        icon: 'bike',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100'
+      };
+    }
+    
+    // Travel Insurance
+    if (code.includes('travel') || title.includes('travel')) {
+      return {
+        icon: 'travel',
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-100'
+      };
+    }
+    
+    // Default generic insurance icon
+    return {
+      icon: 'shield',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100'
+    };
+  }
+
+  // View payment details method
+  viewPaymentDetails(payment: any) {
+    this.paymentDetailsContext = payment;
+    this.showPaymentDetailsModal = true;
+  }
+
+  closePaymentDetailsModal() {
+    this.showPaymentDetailsModal = false;
+    this.paymentDetailsContext = null;
   }
 }

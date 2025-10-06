@@ -1,3 +1,4 @@
+
 // Admin Controller
 import UserPolicy from '../models/userPolicy.js';
 import Payment from '../models/payment.js';
@@ -5,43 +6,144 @@ import User from '../models/User.js';
 import Agent from '../models/agent.js';
 import PolicyProduct from '../models/policyProduct.js';
 import Joi from 'joi';
+import Counter from '../models/counter.js';
 
 const createPolicySchema = Joi.object({
     code: Joi.string().trim().min(2).max(20).required(),
     title: Joi.string().trim().min(3).max(100).required(),
-    type: Joi.string().trim().min(2).max(50).required(),
     description: Joi.string().trim().min(0).max(500).required(),
+    premium: Joi.number().positive().required(),
     termMonths: Joi.number().integer().min(1).max(600).required(),
-    tenureMonths: Joi.number().integer().min(1).max(600).required(),
-    minSumInsured: Joi.number().positive().required(),
-    status: Joi.string().trim().valid('Active', 'Inactive').optional()
+    minSumInsured: Joi.number().min(0).default(0),
+    maxSumInsured: Joi.number().min(0).allow(null)
+}).custom((value, helpers) => {
+    if (value.maxSumInsured != null && value.minSumInsured != null) {
+        if (value.maxSumInsured < value.minSumInsured) {
+            return helpers.error('any.invalid', { message: 'maxSumInsured must be greater than or equal to minSumInsured' });
+        }
+    }
+    return value;
 });
 
 const updatePolicySchema = Joi.object({
     code: Joi.string().trim().min(2).max(20).optional(),
     title: Joi.string().trim().min(3).max(100).optional(),
-    type: Joi.string().trim().min(2).max(50).optional(),
     description: Joi.string().trim().min(0).max(500).optional(),
+    premium: Joi.number().positive().optional(),
     termMonths: Joi.number().integer().min(1).max(600).optional(),
-    tenureMonths: Joi.number().integer().min(1).max(600).optional(),
-    minSumInsured: Joi.number().positive().optional(),
-    status: Joi.string().trim().valid('Active', 'Inactive').optional()
+    minSumInsured: Joi.number().min(0).optional(),
+    maxSumInsured: Joi.number().min(0).optional()
+}).min(1);
+
+// Agent validation schemas
+const createAgentSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100).required(),
+    email: Joi.string().trim().email().required(),
+    password: Joi.string().min(6).optional().default('agent123'),
+    agentCode: Joi.string().trim().pattern(/^AGT\d{2,}$/i).optional()
+});
+
+const updateAgentSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100).optional(),
+    email: Joi.string().trim().email().optional(),
+    password: Joi.string().min(6).optional(),
+    agentCode: Joi.string().trim().pattern(/^AGT\d{2,}$/i).optional()
+}).min(1);
+
+// Claim update validation (admin can edit details but not owner, policy, or status here)
+const updateClaimSchema = Joi.object({
+    incidentDate: Joi.date().optional(),
+    description: Joi.string().trim().min(1).max(1000).optional(),
+    amountClaimed: Joi.number().positive().optional(),
+    decisionNotes: Joi.string().trim().allow('', null).optional()
 }).min(1);
 
 const adminController = {
+    async dbStatus(req, res) {
+        try {
+            const mongoose = (await import('mongoose')).default;
+            const conn = mongoose.connection;
+            const stateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+            const state = stateMap[conn.readyState] || 'unknown';
+
+            // If not connected, return minimal info to avoid blocking calls
+            if (conn.readyState !== 1) {
+                return res.status(200).json({
+                    success: true,
+                    connection: {
+                        code: conn.readyState,
+                        state,
+                        host: conn?.host || null,
+                        dbName: conn?.name || null
+                    },
+                    counts: null,
+                    serverTime: new Date().toISOString()
+                });
+            }
+
+            // Lazy import models not already imported at file top
+            const Claim = (await import('../models/claim.js')).default;
+            const AuditLog = (await import('../models/auditLog.js')).default;
+            const Admin = (await import('../models/admin.js')).default;
+
+            const [users, agents, admins, policies, userPolicies, claims, payments, auditLogs] = await Promise.all([
+                User.countDocuments({}).catch(() => 0),
+                Agent.countDocuments({}).catch(() => 0),
+                Admin.countDocuments({}).catch(() => 0),
+                PolicyProduct.countDocuments({}).catch(() => 0),
+                UserPolicy.countDocuments({}).catch(() => 0),
+                Claim.countDocuments({}).catch(() => 0),
+                Payment.countDocuments({}).catch(() => 0),
+                AuditLog.countDocuments({}).catch(() => 0)
+            ]);
+
+            return res.status(200).json({
+                success: true,
+                connection: {
+                    code: conn.readyState,
+                    state,
+                    host: conn?.host || null,
+                    dbName: conn?.name || null
+                },
+                counts: { users, agents, admins, policies, userPolicies, claims, payments, auditLogs },
+                serverTime: new Date().toISOString()
+            });
+        } catch (err) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+    },
     async allClaims(req, res) {
         try {
-            console.log('Loading all claims...');
             const Claim = (await import('../models/claim.js')).default;
-            // Populate userId (customer) and userPolicyId (policy info)
             const claims = await Claim.find()
-                .populate({ path: 'userId', select: 'name email' })
-                .populate({ path: 'userPolicyId', populate: { path: 'policyProductId', select: 'title code' } })
-                .lean();
-            console.log(`Found ${claims.length} claims`);
-            res.json({ success: true, claims: claims || [] });
+                .populate('userId')
+                .populate({
+                    path: 'userPolicyId',
+                    populate: {
+                        path: 'policyProductId',
+                        model: 'PolicyProduct'
+                    }
+                })
+                .populate('decidedByAgentId');
+            
+            // Update verificationType for existing claims if not set
+            for (let claim of claims) {
+                if (!claim.verificationType || claim.verificationType === 'None') {
+                    if (claim.status !== 'Pending') {
+                        // If claim is approved/rejected and has decidedByAgentId, it was decided by Agent
+                        if (claim.decidedByAgentId) {
+                            claim.verificationType = 'Agent';
+                        } else {
+                            // If no decidedByAgentId, it was likely decided by Admin
+                            claim.verificationType = 'Admin';
+                        }
+                        await claim.save();
+                    }
+                }
+            }
+            
+            res.json({ success: true, claims });
         } catch (err) {
-            console.error('Error in allClaims:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     },
@@ -63,6 +165,7 @@ const adminController = {
             const claim = await Claim.findById(claimId);
             if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
             claim.status = status || 'Approved';
+            claim.verificationType = 'Admin';
             await claim.save();
             if (claim.userPolicyId) {
                 const userPolicy = await UserPolicy.findById(claim.userPolicyId);
@@ -72,6 +175,29 @@ const adminController = {
                 }
             }
             res.json({ success: true, claim });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    },
+    async updateClaim(req, res) {
+        try {
+            const { id } = req.params;
+            const { error, value } = updateClaimSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: 'Validation error', errors: error.details.map(d => d.message) });
+            }
+            const Claim = (await import('../models/claim.js')).default;
+            const claim = await Claim.findById(id);
+            if (!claim) {
+                return res.status(404).json({ success: false, message: 'Claim not found' });
+            }
+            // Apply allowed updates
+            ['incidentDate', 'description', 'amountClaimed', 'decisionNotes'].forEach((k) => {
+                if (value[k] !== undefined) claim[k] = value[k];
+            });
+            await claim.save();
+            const populated = await Claim.findById(id).populate('userId userPolicyId decidedByAgentId');
+            res.json({ success: true, claim: populated });
         } catch (err) {
             res.status(500).json({ success: false, error: err.message });
         }
@@ -136,47 +262,37 @@ const adminController = {
     },
     async approvePolicy(req, res) {
         try {
-            console.log('=== APPROVE POLICY REQUEST ===');
-            console.log('Request body:', req.body);
-            
             const { userPolicyId } = req.body;
-            
-            // Find the user policy by ID
-            const userPolicy = await UserPolicy.findById(userPolicyId)
-                .populate('policyProductId')
-                .populate('userId');
-                
-            if (!userPolicy) {
-                console.log('User policy not found for ID:', userPolicyId);
-                return res.status(404).json({ success: false, message: 'User policy not found' });
-            }
-
-            // Update the user policy status to 'Approved'
+            const userPolicy = await UserPolicy.findById(userPolicyId);
+            if (!userPolicy) return res.status(404).json({ success: false, message: 'User policy not found' });
             userPolicy.status = 'Approved';
-            userPolicy.approved = true;
+            userPolicy.verificationType = 'Admin';
             await userPolicy.save();
-
-            // Also update the PolicyProduct status to 'Approved' when a customer policy is approved
-            if (userPolicy.policyProductId) {
-                await PolicyProduct.findByIdAndUpdate(userPolicy.policyProductId, { 
-                    status: 'Approved' 
-                });
-                console.log(`PolicyProduct ${userPolicy.policyProductId.title} status updated to Approved`);
-            }
-
-            console.log(`Policy ${userPolicy.policyProductId.title} approved for customer ${userPolicy.userId.name}`);
-            res.json({ 
-                success: true, 
-                message: 'Policy approved successfully',
-                userPolicy: {
-                    id: userPolicy._id,
-                    status: userPolicy.status,
-                    customerName: userPolicy.userId.name,
-                    policyTitle: userPolicy.policyProductId.title
-                }
+            res.json({
+                success: true,
+                userPolicyId: userPolicy._id,
+                status: userPolicy.status,
+                verificationType: userPolicy.verificationType
             });
         } catch (err) {
-            console.error('Error in approvePolicy:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    },
+    async rejectPolicy(req, res) {
+        try {
+            const { userPolicyId } = req.body;
+            const userPolicy = await UserPolicy.findById(userPolicyId);
+            if (!userPolicy) return res.status(404).json({ success: false, message: 'User policy not found' });
+            userPolicy.status = 'Rejected';
+            userPolicy.verificationType = 'Admin';
+            await userPolicy.save();
+            res.json({
+                success: true,
+                userPolicyId: userPolicy._id,
+                status: userPolicy.status,
+                verificationType: userPolicy.verificationType
+            });
+        } catch (err) {
             res.status(500).json({ success: false, error: err.message });
         }
     },
@@ -190,16 +306,7 @@ const adminController = {
     },
     async allPayments(req, res) {
         try {
-            const payments = await Payment.find()
-                .populate('userId', 'name email')
-                .populate({
-                    path: 'userPolicyId',
-                    populate: {
-                        path: 'policyProductId',
-                        select: 'title code description premium'
-                    }
-                })
-                .sort({ createdAt: -1 });
+            const payments = await Payment.find().populate('userId userPolicyId');
             res.json({ success: true, payments });
         } catch (err) {
             res.status(500).json({ success: false, error: err.message });
@@ -207,55 +314,14 @@ const adminController = {
     },
     async assignPolicyToAgent(req, res) {
         try {
-            console.log('=== ASSIGN AGENT TO POLICY REQUEST ===');
-            console.log('Request body:', req.body);
-            
             const { policyProductId, agentId } = req.body;
-            
-            console.log('Looking for policy with ID:', policyProductId);
             const policyProduct = await PolicyProduct.findById(policyProductId);
-            if (!policyProduct) {
-                console.log('Policy not found!');
-                return res.status(404).json({ success: false, message: 'Policy product not found' });
-            }
-            console.log('Policy found:', {
-                id: policyProduct._id,
-                title: policyProduct.title,
-                code: policyProduct.code,
-                currentAssignedAgent: policyProduct.assignedAgentName || 'None'
-            });
-            
-            console.log('Looking for agent with ID:', agentId);
+            if (!policyProduct) return res.status(404).json({ success: false, message: 'Policy product not found' });
             const agent = await Agent.findById(agentId);
-            if (!agent) {
-                console.log('Agent not found!');
-                return res.status(404).json({ success: false, message: 'Agent not found' });
-            }
-            console.log('Agent found:', agent.name);
-            
-            // Update policy with agent info and set status to Approved
+            if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
             policyProduct.assignedAgentId = agentId;
             policyProduct.assignedAgentName = agent.name;
-            policyProduct.status = 'Approved';
-            console.log('Saving policy with assigned agent and status Approved:', {
-                policyId: policyProduct._id,
-                assignedAgentId: agentId,
-                assignedAgentName: agent.name,
-                status: policyProduct.status
-            });
             await policyProduct.save();
-            console.log('Policy saved successfully with status Approved');
-            
-            // Verify the update by checking all policies
-            const allPoliciesAfterUpdate = await PolicyProduct.find().sort({ createdAt: -1 });
-            console.log('All policies after assignment update:');
-            allPoliciesAfterUpdate.forEach((p, i) => {
-                console.log(`Policy ${i + 1} (${p._id.toString()}):`, {
-                    title: p.title,
-                    assignedAgentName: p.assignedAgentName || 'None'
-                });
-            });
-            
             res.json({
                 success: true,
                 message: 'Policy product assigned by admin to agent',
@@ -264,24 +330,116 @@ const adminController = {
                 assignedAgentName: policyProduct.assignedAgentName
             });
         } catch (err) {
-            console.error('Error assigning agent to policy:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    },
+    async unassignPolicyAgent(req, res) {
+        try {
+            const { policyProductId } = req.body;
+            if (!policyProductId) {
+                return res.status(400).json({ success: false, message: 'policyProductId is required' });
+            }
+            const policyProduct = await PolicyProduct.findById(policyProductId);
+            if (!policyProduct) return res.status(404).json({ success: false, message: 'Policy product not found' });
+            policyProduct.assignedAgentId = null;
+            policyProduct.assignedAgentName = null;
+            await policyProduct.save();
+            res.json({
+                success: true,
+                message: 'Agent unassigned from policy product',
+                policyProductId: policyProduct._id
+            });
+        } catch (err) {
             res.status(500).json({ success: false, error: err.message });
         }
     },
     async createAgent(req, res) {
         try {
-            const { name, email, password } = req.body;
-            if (!password || password.length < 6) {
-                return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters.' });
+            const { error, value } = createAgentSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: 'Validation error', errors: error.details.map(d => d.message) });
             }
+            const { name, email, password, agentCode } = value;
             const existingAgent = await Agent.findOne({ email });
             if (existingAgent) {
                 return res.status(409).json({ success: false, message: 'Agent with this email already exists.' });
             }
-            const agent = new Agent({ name, email, password });
+            // If code provided, ensure uniqueness and use it; else auto-generate from counter
+            if (agentCode) {
+                const codeExists = await Agent.findOne({ agentCode });
+                if (codeExists) {
+                    return res.status(409).json({ success: false, message: 'Agent code already exists.' });
+                }
+            }
+
+            let finalCode = agentCode || null;
+            if (!finalCode) {
+                const counter = await Counter.findByIdAndUpdate(
+                    'agentCode',
+                    { $inc: { seq: 1 } },
+                    { upsert: true, new: true }
+                );
+                const seq = counter.seq || 1;
+                finalCode = `AGT${String(seq).padStart(2, '0')}`;
+            }
+
+            const agent = new Agent({ name, email, password, agentCode: finalCode });
             await agent.save();
-            res.json({ success: true, agent: { _id: agent._id, name: agent.name, email: agent.email, role: agent.role } });
+            res.json({ success: true, agent: { _id: agent._id, name: agent.name, email: agent.email, role: agent.role, agentCode: agent.agentCode } });
         } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    },
+    async updateAgent(req, res) {
+        try {
+            const { id } = req.params;
+            if (!id || id.length !== 24) {
+                return res.status(400).json({ success: false, message: 'Invalid agent ID format. Must be 24 characters long.' });
+            }
+            const { error, value } = updateAgentSchema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: 'Validation error', errors: error.details.map(d => d.message) });
+            }
+            const agent = await Agent.findById(id);
+            if (!agent) {
+                return res.status(404).json({ success: false, message: 'Agent not found' });
+            }
+            if (value.email && value.email !== agent.email) {
+                const emailExists = await Agent.findOne({ email: value.email, _id: { $ne: id } });
+                if (emailExists) {
+                    return res.status(409).json({ success: false, message: 'Another agent with this email already exists.' });
+                }
+            }
+            // Assign fields; if password present, setting it then saving triggers pre-save hash
+            ['name', 'email', 'password'].forEach((k) => {
+                if (value[k] !== undefined) agent[k] = value[k];
+            });
+            // Handle editable agentCode
+            if (value.agentCode && value.agentCode !== agent.agentCode) {
+                const duplicate = await Agent.findOne({ agentCode: value.agentCode, _id: { $ne: id } });
+                if (duplicate) {
+                    return res.status(409).json({ success: false, message: 'Agent code already exists.' });
+                }
+                agent.agentCode = value.agentCode;
+            }
+            await agent.save();
+            res.json({ success: true, agent: { _id: agent._id, name: agent.name, email: agent.email, role: agent.role, agentCode: agent.agentCode } });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    },
+    async deleteAgent(req, res) {
+        try {
+            const { id } = req.params;
+            const deleted = await Agent.findByIdAndDelete(id);
+            if (!deleted) {
+                return res.status(404).json({ success: false, message: 'Agent not found' });
+            }
+            res.json({ success: true, message: 'Agent deleted successfully', data: { deletedAgentId: id, deletedAgentEmail: deleted.email } });
+        } catch (err) {
+            if (err.name === 'CastError') {
+                return res.status(400).json({ success: false, message: 'Invalid agent ID format' });
+            }
             res.status(500).json({ success: false, error: err.message });
         }
     },
@@ -290,29 +448,12 @@ const adminController = {
             const customers = await User.find({ role: 'Customer' });
             const data = await Promise.all(customers.map(async (customer) => {
                 const policies = await UserPolicy.find({ userId: customer._id })
-                    .populate('policyProductId', 'title code premium description type termMonths');
-                const payments = await Payment.find({ userId: customer._id })
-                    .populate('userPolicyId', 'status');
-                
-                // Calculate totals
-                const totalPremium = policies.reduce((sum, policy) => 
-                    sum + (policy.policyProductId?.premium || 0), 0);
-                const totalPaid = payments.reduce((sum, payment) => 
-                    sum + (payment.amount || 0), 0);
-                
-                return { 
-                    customer, 
-                    policies, 
-                    payments,
-                    totalPremium,
-                    totalPaid
-                };
+                  .populate({ path: 'policyProductId' })
+                  .populate({ path: 'assignedAgentId' });
+                const payments = await Payment.find({ userId: customer._id });
+                return { customer, policies, payments };
             }));
-            
-            // Filter only customers who have policies
-            const customersWithPolicies = data.filter(customerData => customerData.policies.length > 0);
-            
-            res.json({ success: true, data: customersWithPolicies });
+            res.json({ success: true, data });
         } catch (err) {
             res.status(500).json({ success: false, error: err.message });
         }
@@ -327,7 +468,7 @@ const adminController = {
                     errors: error.details.map(detail => detail.message)
                 });
             }
-            const { code, title, description, premium, termMonths, minSumInsured } = value;
+            const { code, title, description, premium, termMonths, minSumInsured, maxSumInsured } = value;
             const existingPolicy = await PolicyProduct.findOne({ code });
             if (existingPolicy) {
                 return res.status(409).json({
@@ -341,7 +482,8 @@ const adminController = {
                 description,
                 premium,
                 termMonths,
-                minSumInsured: minSumInsured || 0
+                minSumInsured: minSumInsured || 0,
+                maxSumInsured: maxSumInsured ?? null
             });
             const savedPolicy = await newPolicy.save();
             res.status(201).json({
@@ -449,383 +591,6 @@ const adminController = {
             }
             res.status(500).json({ success: false, error: err.message });
         }
-    },
-    async getPendingPolicies(req, res) {
-        try {
-            console.log('=== GET PENDING POLICIES REQUEST ===');
-
-            // Fetch user policies where the customer policy status is 'Pending'
-            const pendingPolicies = await UserPolicy.find({ 
-                status: 'Pending',
-                policyProductId: { $ne: null }, // Only get policies with valid policyProductId
-                userId: { $ne: null } // Only get policies with valid userId
-            })
-                .populate({ path: 'policyProductId', select: 'title code price description' })
-                .populate({ path: 'userId', select: 'name email' });
-
-            console.log('Found pending policies:', pendingPolicies.length);
-            
-            // Debug: Log the first few policies to see their structure
-            if (pendingPolicies.length > 0) {
-                console.log('Sample pending policy structure:', {
-                    id: pendingPolicies[0]._id,
-                    status: pendingPolicies[0].status,
-                    policyProductId: pendingPolicies[0].policyProductId,
-                    userId: pendingPolicies[0].userId
-                });
-            }
-
-            if (pendingPolicies.length === 0) {
-                console.log('No pending policies found.');
-                return res.json({ success: true, message: 'No pending policies available.', policies: [] });
-            }
-
-            // Map the valid policies (additional filter as backup)
-            const response = pendingPolicies
-                .filter(policy => policy.policyProductId && policy.userId) // Additional filter as backup
-                .map(policy => ({
-                    userPolicyId: policy._id,
-                    policyId: policy.policyProductId._id,
-                    policyTitle: policy.policyProductId.title,
-                    policyCode: policy.policyProductId.code,
-                    policyPrice: policy.policyProductId.price,
-                    customerName: policy.userId.name,
-                    customerEmail: policy.userId.email,
-                    purchaseDate: policy.createdAt,
-                    status: policy.status
-                }));
-
-            console.log('Valid pending policies response:', response);
-            res.json({ success: true, policies: response });
-        } catch (err) {
-            console.error('Error in getPendingPolicies:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    },
-
-    // Get approved policies for customers to make payments
-    async getApprovedPolicies(req, res) {
-        try {
-            console.log('=== GET APPROVED POLICIES REQUEST ===');
-
-            // Fetch user policies where the status is 'Approved'
-            const approvedPolicies = await UserPolicy.find({ 
-                status: 'Approved',
-                policyProductId: { $ne: null }, // Only get policies with valid policyProductId
-                userId: { $ne: null } // Only get policies with valid userId
-            })
-                .populate({ path: 'policyProductId', select: 'title code price description type' })
-                .populate({ path: 'userId', select: 'name email' });
-
-            console.log('Found approved policies:', approvedPolicies.length);
-
-            // Map the valid policies (additional filter as backup)
-            const response = approvedPolicies
-                .filter(policy => policy.policyProductId && policy.userId) // Additional filter as backup
-                .map(policy => ({
-                    userPolicyId: policy._id,
-                    policyId: policy.policyProductId._id,
-                    policyTitle: policy.policyProductId.title,
-                    policyCode: policy.policyProductId.code,
-                    policyPrice: policy.policyProductId.price,
-                    customerName: policy.userId.name,
-                    customerEmail: policy.userId.email,
-                    purchaseDate: policy.createdAt,
-                    status: policy.status
-                }));
-
-            res.json({ success: true, policies: response });
-        } catch (err) {
-            console.error('Error in getApprovedPolicies:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    },
-    async assignClaimToAgent(req, res) {
-        try {
-            const { claimId, agentId } = req.body;
-            const Claim = (await import('../models/claim.js')).default;
-            const Agent = (await import('../models/agent.js')).default;
-            const claim = await Claim.findById(claimId);
-            if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
-            const agent = await Agent.findById(agentId);
-            if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
-            claim.decidedByAgentId = agentId;
-            await claim.save();
-            res.json({ success: true, claim });
-        } catch (err) {
-            res.status(500).json({ success: false, error: err.message });
-        }
-    },
-
-};
-
-// Basic Policy CRUD Methods (for backward compatibility)
-adminController.addPolicy = async (req, res) => {
-    try {
-        const { error, value } = createPolicySchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Validation failed', 
-                details: error.details 
-            });
-        }
-
-        const newPolicy = new PolicyProduct(value);
-        const savedPolicy = await newPolicy.save();
-        
-        res.status(201).json({
-            success: true,
-            message: 'Policy created successfully',
-            policy: savedPolicy
-        });
-    } catch (err) {
-        if (err.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Policy code already exists'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.getPolicies = async (req, res) => {
-    try {
-        const policies = await PolicyProduct.find().sort({ createdAt: -1 });
-        res.json({ 
-            success: true, 
-            message: 'Policies retrieved successfully',
-            policies: policies
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.updatePolicy = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { error, value } = updatePolicySchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Validation failed', 
-                details: error.details 
-            });
-        }
-
-        const updatedPolicy = await PolicyProduct.findByIdAndUpdate(
-            id, 
-            value, 
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedPolicy) {
-            return res.status(404).json({
-                success: false,
-                message: 'Policy not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Policy updated successfully',
-            policy: updatedPolicy
-        });
-    } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid policy ID format'
-            });
-        }
-        if (err.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Policy code already exists'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.deletePolicy = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deletedPolicy = await PolicyProduct.findByIdAndDelete(id);
-        
-        if (!deletedPolicy) {
-            return res.status(404).json({
-                success: false,
-                message: 'Policy not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Policy deleted successfully',
-            policy: {
-                id: deletedPolicy._id,
-                name: deletedPolicy.title,
-                code: deletedPolicy.code
-            }
-        });
-    } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid policy ID format'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-// RESTful Policy Management Methods (moved outside to avoid conflicts)
-adminController.getAllPolicies = async (req, res) => {
-    try {
-        console.log('=== GET ALL POLICIES REQUEST ===');
-        const policies = await PolicyProduct.find().sort({ createdAt: -1 });
-        console.log('Found policies count:', policies.length);
-        
-        policies.forEach((policy, index) => {
-            console.log(`Policy ${index + 1}:`, {
-                id: policy._id.toString(),
-                title: policy.title,
-                code: policy.code,
-                assignedAgentId: policy.assignedAgentId ? policy.assignedAgentId.toString() : null,
-                assignedAgentName: policy.assignedAgentName || null
-            });
-        });
-        
-        res.json({ 
-            success: true, 
-            message: 'Policies retrieved successfully',
-            policies: policies
-        });
-    } catch (err) {
-        console.error('Error fetching policies:', err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.createPolicy = async (req, res) => {
-    try {
-        console.log('=== CREATE POLICY REQUEST RECEIVED ===');
-        console.log('Request body:', req.body);
-        console.log('User info:', req.user);
-        
-        const { error, value } = createPolicySchema.validate(req.body);
-        if (error) {
-            console.log('Validation error:', error.details);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Validation failed', 
-                details: error.details 
-            });
-        }
-
-        console.log('Validated data:', value);
-        const newPolicy = new PolicyProduct(value);
-        console.log('Creating new policy:', newPolicy);
-        
-        const savedPolicy = await newPolicy.save();
-        console.log('Policy saved successfully:', savedPolicy);
-        
-        res.status(201).json({
-            success: true,
-            message: 'Policy created successfully',
-            policy: savedPolicy
-        });
-    } catch (err) {
-        console.error('Error creating policy:', err);
-        if (err.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Policy code already exists'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.updatePolicyById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { error, value } = updatePolicySchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Validation failed', 
-                details: error.details 
-            });
-        }
-
-        const updatedPolicy = await PolicyProduct.findByIdAndUpdate(
-            id, 
-            value, 
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedPolicy) {
-            return res.status(404).json({
-                success: false,
-                message: 'Policy not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Policy updated successfully',
-            policy: updatedPolicy
-        });
-    } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid policy ID format'
-            });
-        }
-        if (err.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Policy code already exists'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
-    }
-};
-
-adminController.deletePolicyById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deletedPolicy = await PolicyProduct.findByIdAndDelete(id);
-        
-        if (!deletedPolicy) {
-            return res.status(404).json({
-                success: false,
-                message: 'Policy not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Policy deleted successfully',
-            policy: {
-                id: deletedPolicy._id,
-                name: deletedPolicy.title,
-                code: deletedPolicy.code
-            }
-        });
-    } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid policy ID format'
-            });
-        }
-        res.status(500).json({ success: false, error: err.message });
     }
 };
 

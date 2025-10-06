@@ -1,1391 +1,1660 @@
-<!-- Admin Dashboard -->
-<div class="min-h-screen bg-gray-100 flex relative">
-  <!-- Sidebar -->
-  <div class="bg-gray-800 text-white w-64 space-y-6 py-7 px-2 fixed inset-y-0 left-0 transform transition duration-300 ease-in-out z-50" 
-  >
-    <!-- Logo -->
-    <div class="flex items-center justify-between px-4">
-      <div class="flex items-center">
-        <svg class="h-8 w-8 text-white mr-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-        </svg>
-        <span class="text-2xl font-bold">Admin Panel</span>
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+  <!-- Header - Only show on main dashboard page -->
+  <div *ngIf="!activeTab" class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex w-16 h-16 bg-white border border-indigo-100 ring-4 ring-white/50 rounded-full items-center justify-center shadow-sm">
+        <i class="fas fa-user-shield text-2xl text-indigo-500"></i>
       </div>
-      <!-- Toggle button inside sidebar -->
-  <!-- Toggle button removed -->
+      <div class="space-y-1">
+        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">{{ roleTitle }} Dashboard</h1>
+        <p class="text-slate-600">Welcome, <span class="font-semibold">{{ userName }}</span></p>
+      </div>
     </div>
-
-    <!-- Navigation -->
-    <nav class="mt-10">
-      <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-      </a>
-      <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-users mr-2"></i> Manage Users
-      </a>
-      <a href="javascript:void(0)" (click)="showCustomerDetails(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-user-friends mr-2"></i> Customer Details
-      </a>
-      <a href="javascript:void(0)" (click)="showPolicies(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-shield-alt mr-2"></i> Policies
-      </a>
-      <a href="javascript:void(0)" (click)="showAgents(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-user-tie mr-2"></i> Agents
-      </a>
-      <a href="javascript:void(0)" (click)="showClaims(); $event.preventDefault()" 
-         class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white"
-         [class.bg-gray-700]="currentSection === 'claims'">
-        <i class="fas fa-file-invoice-dollar mr-2"></i> Claims
-      </a>
-      <a href="javascript:void(0)" (click)="showPayments(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-credit-card mr-2"></i> Payments
-      </a>
-      <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-chart-bar mr-2"></i> Reports
-      </a>
-      <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-cog mr-2"></i> Settings
-      </a>
-      <a href="javascript:void(0)" (click)="showPendingPolicies(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-clock mr-2"></i> Pending Policies
-      </a>
-      <a href="javascript:void(0)" (click)="showApprovedPolicies(); $event.preventDefault()" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white">
-        <i class="fas fa-check-circle mr-2"></i> Approved Policies
-      </a>
-    </nav>
+    <div class="flex items-center gap-2">
+      <button (click)="refreshAll()" class="p-2 rounded-xl text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 transition-colors disabled:opacity-60 ring-1 ring-indigo-200" [disabled]="isLoading" aria-label="Refresh all" title="Refresh">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M2.985 15.091v4.992h4.992M20.261 8.633A9 9 0 006.344 6.344M3.739 15.367A9 9 0 0017.656 17.656" />
+        </svg>
+      </button>
+      <button (click)="logout()" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-rose-600 border border-rose-600 rounded-lg hover:bg-rose-700 transition-colors">
+        Logout
+      </button>
+    </div>
   </div>
 
-  <!-- Toggle Button (appears when sidebar is closed) -->
-  <!-- Toggle Button removed -->
+  <!-- Back button on section pages -->
+  <div *ngIf="activeTab" class="mb-4">
+    <button (click)="goBack()" class="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-slate-700 ring-1 ring-slate-300 hover:bg-slate-200">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+      </svg>
+      Back
+    </button>
+  </div>
 
-  <!-- Main Content - Fixed position, doesn't move -->
-  <div class="flex-1 flex flex-col overflow-hidden ml-64">
-    <!-- Top Navigation -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
+  <!-- Dashboard Stats (main dashboard only; compact cards) -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" *ngIf="!activeTab">
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="p-2 rounded-full bg-indigo-100 text-indigo-600">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">Total Customers</h3>
+          <p class="text-xl font-bold text-indigo-600">{{ kpis.customers }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="p-2 rounded-full bg-blue-100 text-blue-600">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">Available Policies</h3>
+          <p class="text-xl font-bold text-blue-600">{{ kpis.policies }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="h-9 w-9 rounded-full flex items-center justify-center bg-purple-100 text-purple-600">
+            <i class="fas fa-file-contract" style="font-size: 16px; display: block; margin: auto;"></i>
           </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-gray-700">Welcome, {{adminName}}</span>
-            <button (click)="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition duration-200">
-              Logout
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">User Policies</h3>
+          <p class="text-xl font-bold text-purple-600">{{ kpis.userPolicies }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="p-2 rounded-full bg-yellow-100 text-yellow-600">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">Total Claims</h3>
+          <p class="text-xl font-bold text-yellow-600">{{ kpis.claims }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="p-2 rounded-full bg-green-100 text-green-600">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">Total Payments</h3>
+          <p class="text-xl font-bold text-green-600">{{ kpis.totalPayments }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow-sm">
+      <div class="flex items-center">
+        <div class="p-2 rounded-full bg-emerald-100 text-emerald-600">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-semibold text-gray-900">Total Revenue</h3>
+          <p class="text-xl font-bold text-emerald-600">₹{{ kpis.totalRevenue | number:'1.2-2' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation: Card Tabs (landing page for admin-dashboard) -->
+  <div class="mb-6" *ngIf="!activeTab">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <!-- Pending Policies -->
+  <button (click)="setActiveTab('pending-policies')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'pending-policies' ? 'bg-blue-50 ring-blue-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-blue-100 text-blue-600">
+            <i class="fas fa-clock" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Pending Policies</div>
+            <div class="text-xs text-slate-500">Review applications</div>
+          </div>
+        </div>
+      </button>
+      <!-- Approved Policies -->
+  <button (click)="setActiveTab('approved-policies')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'approved-policies' ? 'bg-emerald-50 ring-emerald-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-emerald-100 text-emerald-600">
+            <i class="fas fa-check" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Approved Policies</div>
+            <div class="text-xs text-slate-500">Recent approvals</div>
+          </div>
+        </div>
+      </button>
+      <!-- Agents Management -->
+  <button (click)="setActiveTab('agents')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'agents' ? 'bg-indigo-50 ring-indigo-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-indigo-100 text-indigo-600">
+            <i class="fas fa-user-tie" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Agents</div>
+            <div class="text-xs text-slate-500">Manage agents</div>
+          </div>
+        </div>
+      </button>
+      <!-- Policy Products -->
+  <button (click)="setActiveTab('policies')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'policies' ? 'bg-amber-50 ring-amber-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-amber-100 text-amber-600">
+            <i class="fas fa-shield-alt" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Policy Products</div>
+            <div class="text-xs text-slate-500">Create & edit</div>
+          </div>
+        </div>
+      </button>
+      <!-- User Policies -->
+  <button (click)="setActiveTab('user-policies')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'user-policies' ? 'bg-purple-50 ring-purple-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600">
+            <i class="fas fa-file-contract" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">User Policies</div>
+            <div class="text-xs text-slate-500">All customers</div>
+          </div>
+        </div>
+      </button>
+      <!-- Customers -->
+  <button (click)="setActiveTab('customers')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'customers' ? 'bg-sky-50 ring-sky-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-sky-100 text-sky-600">
+            <i class="fas fa-users" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Customers</div>
+            <div class="text-xs text-slate-500">Manage users</div>
+          </div>
+        </div>
+      </button>
+      <!-- Claims -->
+  <button (click)="setActiveTab('claims')" type="button"
+        class="group text-left rounded-2xl p-4 ring-1 transition-all shadow-sm hover:shadow md:hover:-translate-y-0.5"
+        [ngClass]="activeTab === 'claims' ? 'bg-rose-50 ring-rose-200' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl flex items-center justify-center bg-rose-100 text-rose-600">
+            <i class="fas fa-gavel" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-800">Claims</div>
+            <div class="text-xs text-slate-500">Review & decide</div>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Database Status (bottom of main dashboard) - keep mounted, hide when in section -->
+  <div class="mt-6" [class.hidden]="!!activeTab">
+    <div class="bg-white rounded-lg shadow-md ring-1 ring-slate-200">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-700 font-semibold">Database Status</span>
+          <span *ngIf="dbStatus?.connection as c" class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+            [ngClass]="{
+              'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200': c.state === 'connected',
+              'bg-amber-50 text-amber-700 ring-1 ring-amber-200': c.state === 'connecting',
+              'bg-rose-50 text-rose-700 ring-1 ring-rose-200': c.state === 'disconnected' || c.state === 'disconnecting'
+            }">
+            <i class="fas fa-database"></i>
+            <span class="uppercase tracking-wide">{{ c.state }}</span>
+          </span>
+        </div>
+        <div class="text-xs text-slate-500">Server time: {{ dbStatus.serverTime | date:'medium' }}</div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 text-sm">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 flex items-center justify-center rounded-full bg-sky-50 text-sky-600">
+            <i class="fas fa-plug"></i>
+          </div>
+          <div>
+            <div class="text-slate-600">Host</div>
+            <div class="font-medium text-slate-800">{{ dbStatus.connection?.host || '-' }}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+            <i class="fas fa-database"></i>
+          </div>
+          <div>
+            <div class="text-slate-600">Database</div>
+            <div class="font-medium text-slate-800">{{ dbStatus.connection?.dbName || '-' }}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <i class="fas fa-signal"></i>
+          </div>
+          <div>
+            <div class="text-slate-600">State Code</div>
+            <div class="font-medium text-slate-800">{{ dbStatus.connection?.code }}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 flex items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <i class="fas fa-info-circle"></i>
+          </div>
+          <div>
+            <div class="text-slate-600">State</div>
+            <div class="font-medium text-slate-800 capitalize">{{ dbStatus.connection?.state }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 pb-4" *ngIf="dbStatus?.counts as cts">
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-user text-slate-500"></i><span class="text-xs text-slate-600">Users</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.users }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-user-tie text-slate-500"></i><span class="text-xs text-slate-600">Agents</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.agents }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-user-shield text-slate-500"></i><span class="text-xs text-slate-600">Admins</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.admins }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-file-alt text-slate-500"></i><span class="text-xs text-slate-600">Policies</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.policies }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-id-card text-slate-500"></i><span class="text-xs text-slate-600">User Policies</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.userPolicies }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-clipboard-check text-slate-500"></i><span class="text-xs text-slate-600">Claims</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.claims }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-wallet text-slate-500"></i><span class="text-xs text-slate-600">Payments</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.payments }}</span>
+          </div>
+          <div class="flex items-center gap-2 p-2 rounded-lg ring-1 ring-slate-100 bg-slate-50">
+            <i class="fas fa-history text-slate-500"></i><span class="text-xs text-slate-600">Audit Logs</span>
+            <span class="ml-auto text-sm font-semibold text-slate-800">{{ cts.auditLogs }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Policy Details Modal -->
+    <div *ngIf="showPolicyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closePolicyModal()">
+      <div class="w-full max-w-3xl scale-100 rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Policy Details</h3>
+          <button (click)="closePolicyModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div class="space-y-1">
+            <p><span class="font-medium text-slate-700">Policy ID:</span> {{ selectedPolicy?._id }}</p>
+            <p><span class="font-medium text-slate-700">User:</span> {{ selectedPolicy?.userId?.name || selectedPolicy?.userId?.email || selectedPolicy?.userId }}</p>
+            <p><span class="font-medium text-slate-700">Status:</span> {{ selectedPolicy?.status }}</p>
+            <p><span class="font-medium text-slate-700">Verification:</span> {{ selectedPolicy?.verificationType }}</p>
+          </div>
+          <div class="space-y-1">
+            <p><span class="font-medium text-slate-700">Product:</span> {{ selectedPolicy?.policyProductId?.title || selectedPolicy?.policyProductId?.code || selectedPolicy?.policyProductId }}</p>
+            <p><span class="font-medium text-slate-700">Start:</span> {{ selectedPolicy?.startDate | date: 'medium' }}</p>
+            <p><span class="font-medium text-slate-700">End:</span> {{ selectedPolicy?.endDate | date: 'medium' }}</p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button (click)="closePolicyModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Pending User Policies Tab -->
+  <div [class.hidden]="activeTab !== 'pending-policies'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Pending Policies</h2>
+      <p class="text-gray-600 mt-1">Review and approve pending policy applications</p>
+    </div>
+    
+    <div class="p-6">
+  <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-800">Policy Applications</h3>
+      </div>
+      <div [class.hidden]="!policiesError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ policiesError }}</div>
+
+      <div class="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Policy ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Policy Code</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 bg-white" [class.hidden]="!pendingPolicies.length">
+            <tr *ngFor="let p of pendingPolicies; trackBy: trackById" class="hover:bg-slate-50/60">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ p._id }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ p.policyProductId?.code || policyByRef(p.policyProductId)?.code || '—' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ p.userId?.name || p.userId?.email || p.userId || '—' }}</td>
+              <td class="px-6 py-4 text-sm text-gray-700">{{ p.policyProductId?.title || p.policyProductId?.code || p.policyProductId || '—' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ p.startDate | date: 'mediumDate' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ p.endDate | date: 'mediumDate' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">{{ p.status }}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex flex-wrap gap-2">
+                  <button (click)="approvePolicy(p._id)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
+                    Approve
+                  </button>
+                  <button (click)="rejectPolicy(p._id)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                    Reject
+                  </button>
+                  <button (click)="viewPolicyDetails(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
+                    View Details
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <tbody [class.hidden]="pendingPolicies.length">
+          <tr>
+            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">No pending policies.</td>
+          </tr>
+        </tbody>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approved Policies Tab -->
+  <div [class.hidden]="activeTab !== 'approved-policies'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Approved Policies</h2>
+      <p class="text-gray-600 mt-1">View recently approved policy applications</p>
+    </div>
+    
+    <div class="p-6">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-800">Recently Approved Policies</h3>
+      </div>
+      <div [class.hidden]="!approvedPoliciesError" class="mb-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">{{ approvedPoliciesError }}</div>
+      <div [class.hidden]="!approvedPolicies.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div *ngFor="let p of approvedPolicies; trackBy: trackById" class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold">
+                {{ (p.policyProductId?.code || policyByRef(p.policyProductId)?.code || 'UP').slice(0,2).toUpperCase() }}
+              </div>
+              <div>
+                <div class="text-sm font-semibold text-slate-800">{{ p.policyProductId?.title || p.policyProductId?.code || p.policyProductId || '—' }}</div>
+                <div class="text-xs font-mono text-slate-500">{{ p._id }}</div>
+              </div>
+            </div>
+            <span class="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">{{ p.status }}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-sm text-slate-700 mb-4">
+            <div><span class="text-slate-500">User:</span> {{ p.userId?.name || p.userId?.email || p.userId || '—' }}</div>
+            <div><span class="text-slate-500">Code:</span> {{ p.policyProductId?.code || policyByRef(p.policyProductId)?.code || '—' }}</div>
+            <div><span class="text-slate-500">Start:</span> {{ p.startDate | date: 'mediumDate' }}</div>
+            <div><span class="text-slate-500">End:</span> {{ p.endDate | date: 'mediumDate' }}</div>
+          </div>
+          <div>
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+              [ngClass]="verificationService.getVerificationTypeClasses(p.verificationType)">
+              {{ verificationService.getVerificationTypeDisplay(p.verificationType) }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div [class.hidden]="approvedPolicies.length" class="p-5 text-sm text-slate-600">No approved policies recently.</div>
+    </div>
+  </div>
+
+  <!-- Agents Management Tab -->
+  <div [class.hidden]="activeTab !== 'agents'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Agents Management</h2>
+      <p class="text-gray-600 mt-1">Manage insurance agents and their assignments</p>
+    </div>
+    
+    <div class="p-6">
+      <div class="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+            <i class="fas fa-user-tie" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-slate-800">Agents</h3>
+            <p class="text-sm text-slate-600">{{ agents.length || 0 }} total agents</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button (click)="openCreateAgent()" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm ring-1 ring-emerald-500/50 hover:bg-emerald-700 transition-colors">
+            Add New Agent
+          </button>
+        </div>
+      </div>
+      <div [class.hidden]="!agentsError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ agentsError }}</div>
+      <div *ngIf="agentsLoading && !agents?.length" class="p-6 text-sm text-slate-600">Loading agents...</div>
+
+      <div *ngIf="agents?.length; else noAgentsBlock" class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+        <div *ngFor="let a of agents; trackBy: trackById" class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-start justify-between mb-2">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                {{ (a.name || a.email || 'A')?.slice(0,2) | uppercase }}
+              </div>
+              <div>
+                <div class="text-sm font-semibold text-slate-800">{{ a.name | uppercase }}</div>
+                <div class="text-xs font-mono text-slate-500">{{ a.agentCode || '—' }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- Prominent ID above email -->
+          <div class="text-sm font-mono text-slate-700 break-all mb-1">ID : {{ a._id }}</div>
+          <div class="text-sm text-slate-700 mb-3">Email : {{ a.email }}</div>
+          <div class="flex flex-wrap gap-2">
+            <button (click)="openAgentView(a)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors">
+              View
+            </button>
+            <button (click)="openEditAgent(a)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
+              Edit
+            </button>
+            <button (click)="openDeleteModal('agent', a)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+              Delete
             </button>
           </div>
         </div>
       </div>
-    </header>
+      <ng-template #noAgentsBlock>
+        <div class="p-8 text-center text-sm text-slate-600">No agents found. Click <span class="font-medium">Add Agent</span> to create one.</div>
+      </ng-template>
 
-    <!-- Dashboard Content -->
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-      <div class="container mx-auto px-6 py-8">
-        <!-- Stats Cards -->
-        <div class="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
-          <!-- Total Users -->
-          <div class="flex items-center p-4 bg-white rounded-lg shadow-xs">
-            <div class="p-3 mr-4 text-orange-500 bg-orange-100 rounded-full">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM5 17a7.001 7.001 0 1114 0H5z"></path>
-              </svg>
-            </div>
-            <div>
-              <p class="mb-2 text-sm font-medium text-gray-600">Total Users</p>
-              <p class="text-lg font-semibold text-gray-700">{{stats.totalUsers}}</p>
-            </div>
+      <!-- Manage Agent Modal -->
+      <div *ngIf="manageAgentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeManageAgentModal()">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-800">{{ agentFormMode === 'create' ? 'Add Agent' : 'Edit Agent' }}</h3>
+            <button (click)="closeManageAgentModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
           </div>
-
-          <!-- Total Policies -->
-          <div class="flex items-center p-4 bg-white rounded-lg shadow-xs">
-            <div class="p-3 mr-4 text-green-500 bg-green-100 rounded-full">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-              </svg>
+          <div *ngIf="agentFormError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ agentFormError }}</div>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Name</label>
+              <input type="text" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="agentForm.name" (input)="onAgentNameInput()" [ngModelOptions]="{standalone:true}" placeholder="Agent Name" />
             </div>
             <div>
-              <p class="mb-2 text-sm font-medium text-gray-600">Active Policies</p>
-              <p class="text-lg font-semibold text-gray-700">{{stats.totalPolicies}}</p>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+              <input type="email" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="agentForm.email" (input)="onAgentEmailInput()" [ngModelOptions]="{standalone:true}" placeholder="agent@example.com" />
             </div>
+            <!-- Agent Code (editable; digits-only input; 'AGT' prefix shown) -->
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Agent Code</label>
+              <div class="flex items-center rounded-xl border border-slate-300 overflow-hidden">
+                <span class="px-3 text-slate-600 select-none">AGT</span>
+                <input type="text" class="w-full p-2.5 outline-none" [(ngModel)]="agentCodeDigits" (input)="onAgentCodeDigitsInput()" [ngModelOptions]="{standalone:true}" placeholder="01" inputmode="numeric" pattern="[0-9]{2,}" title="Enter at least two digits (e.g., 01)" />
+              </div>
+              <p class="mt-1 text-[11px] text-slate-500">Type the number only (e.g., 01). We’ll save it as AGT01.</p>
+            </div>
+            <div *ngIf="agentFormMode === 'create'">
+              <label class="mb-1 block text-sm font-medium text-slate-700">Password (default)</label>
+              <input type="text" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="agentForm.password" [ngModelOptions]="{standalone:true}" placeholder="agent123" />
+              <p class="mt-1 text-[11px] text-slate-500">You can change this before saving. It defaults to <span class="font-mono">agent123</span>.</p>
+            </div>
+            <div *ngIf="agentFormMode === 'edit'">
+              <label class="mb-1 block text-sm font-medium text-slate-700">New Password (optional)</label>
+              <input type="password" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="agentForm.password" [ngModelOptions]="{standalone:true}" placeholder="Leave blank to keep existing" />
+            </div>
+            <div class="md:col-span-2" *ngIf="policies?.length">
+              <label class="mb-1 block text-sm font-medium text-slate-700">Assign Policy (optional)</label>
+              <select class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="agentForm.assignedPolicyId" [ngModelOptions]="{standalone:true}">
+                <option value="">-- select a policy to assign --</option>
+                <option *ngFor="let p of policies" [value]="p._id">{{ p.code }} - {{ p.title }}</option>
+              </select>
+              <p class="mt-1 text-[11px] text-slate-500">Choose one policy to auto-assign after the agent is saved.</p>
+            </div>
+            <!-- Branch & Phone inputs removed -->
           </div>
-
-          <!-- Pending Claims -->
-          <div class="flex items-center p-4 bg-white rounded-lg shadow-xs">
-            <div class="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2v1a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
-              </svg>
-            </div>
-            <div>
-              <p class="mb-2 text-sm font-medium text-gray-600">Pending Claims</p>
-              <p class="text-lg font-semibold text-gray-700">{{stats.pendingClaims}}</p>
-            </div>
-          </div>
-
-          <!-- Total Agents -->
-          <div class="flex items-center p-4 bg-white rounded-lg shadow-xs">
-            <div class="p-3 mr-4 text-teal-500 bg-teal-100 rounded-full">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
-              </svg>
-            </div>
-            <div>
-              <p class="mb-2 text-sm font-medium text-gray-600">Active Agents</p>
-              <p class="text-lg font-semibold text-gray-700">{{stats.totalAgents}}</p>
-            </div>
+          <div class="mt-6 flex justify-end gap-2">
+            <button (click)="closeManageAgentModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Cancel</button>
+            <button (click)="saveAgent()" class="rounded-full bg-indigo-600 px-4 py-2 text-white shadow-sm ring-1 ring-indigo-500/50 hover:bg-indigo-700">Save</button>
           </div>
         </div>
+      </div>
 
-        <!-- Policy Management Section -->
-        <div class="bg-white rounded-lg shadow-xs" *ngIf="showPoliciesSection">
-          <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h4 class="text-lg font-semibold text-gray-800">Policy Management</h4>
-            <button (click)="showAddPolicyForm = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-200">
-              <i class="fas fa-plus mr-2"></i>Add New Policy
-            </button>
+      <!-- Assign Agent to Policies (moved from Policy Products tab) -->
+      <div class="mt-10">
+        <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+              <i class="fas fa-user-plus" style="font-size: 16px; display: block; margin: auto;"></i>
+            </div>
+            <div>
+              <h2 class="text-xl font-semibold text-slate-800">Assign Agent to Policies</h2>
+              <p class="text-sm text-slate-600">{{ policies.length || 0 }} policies</p>
+            </div>
           </div>
           
-          <!-- Add Policy Form -->
-          <div *ngIf="showAddPolicyForm" class="p-4 bg-gray-50 border-b">
-            <h5 class="text-md font-semibold text-gray-700 mb-4">Add New Policy</h5>
-            <form #addPolicyForm="ngForm">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Policy Code</label>
-                  <input type="text" [(ngModel)]="newPolicy.code" name="policyCode"
-                         placeholder="Leave blank for auto-generation (e.g., POL001)" 
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Policy Title <span class="text-red-500">*</span></label>
-                  <input type="text" [(ngModel)]="newPolicy.title" name="policyTitle" required 
-                         placeholder="e.g., Basic Life Insurance Plan"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Policy Type <span class="text-red-500">*</span></label>
-                  <select [(ngModel)]="newPolicy.type" name="policyType" required 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Select Policy Type</option>
-                    <option value="Life Insurance">Life Insurance</option>
-                    <option value="Health Insurance">Health Insurance</option>
-                    <option value="Auto Insurance">Auto Insurance</option>
-                    <option value="Home Insurance">Home Insurance</option>
-                    <option value="Travel Insurance">Travel Insurance</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Min Sum Insured <span class="text-red-500">*</span></label>
-                  <input type="number" [(ngModel)]="newPolicy.minSumInsured" name="minSumInsured" required min="1" step="0.01"
-                         placeholder="10000.00"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Term (Months) <span class="text-red-500">*</span></label>
-                  <input type="number" [(ngModel)]="newPolicy.termMonths" name="termMonths" required min="1" max="600"
-                         placeholder="12"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Tenure (Months) <span class="text-red-500">*</span></label>
-                  <input type="number" [(ngModel)]="newPolicy.tenureMonths" name="tenureMonths" required min="1" max="600"
-                         placeholder="24"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Description <span class="text-red-500">*</span></label>
-                  <textarea [(ngModel)]="newPolicy.description" name="description" required rows="3" 
-                            placeholder="Detailed description of the policy coverage and benefits..."
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-              </div>
-              <div class="mt-4 flex space-x-3">
-                <button type="button" (click)="addPolicy()"
-                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-200">
-                  <i class="fas fa-save mr-2"></i>Save Policy
-                </button>
-                <button type="button" (click)="cancelAddPolicy()" 
-                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-200">
-                  <i class="fas fa-times mr-2"></i>Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+        </div>
 
-          <!-- Policies List -->
-          <div class="p-4">
-            <!-- Search and Filter -->
-            <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div class="flex-1">
-                <input type="text" [(ngModel)]="policySearchTerm" (input)="filterPolicies()" 
-                       placeholder="Search policies..." 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        <div class="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Code</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Title</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Assigned Agent</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white" [class.hidden]="!policies.length">
+              <tr *ngFor="let p of policies" class="hover:bg-slate-50/60">
+                <td class="px-4 py-3 text-sm text-slate-900">
+                  <div class="flex items-center gap-2">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
+                      {{ (p.code || 'PO').slice(0,2).toUpperCase() }}
+                    </div>
+                    <span>{{ p.code }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-slate-700">{{ p.title }}</td>
+                <td class="px-4 py-3 text-sm text-slate-700">
+                  <ng-container *ngIf="p.assignedAgentName; else unassignedPolicy">{{ p.assignedAgentName }}</ng-container>
+                  <ng-template #unassignedPolicy>—</ng-template>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <div class="flex flex-wrap gap-2">
+                    <button (click)="openPolicyProductView(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors">
+                      View
+                    </button>
+                    <button (click)="openAssignAgent(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors">
+                      Assign Agent
+                    </button>
+                    <button *ngIf="p.assignedAgentId || p.assignedAgentName" (click)="openUnassignModal(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                      Remove Agent
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div [class.hidden]="policies.length" class="p-8 text-center text-sm text-slate-600">No policies available for assignment.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Policy Products Tab -->
+  <div [class.hidden]="activeTab !== 'policies'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-slate-200">
+      <h2 class="text-xl font-semibold text-slate-900">Policy Products</h2>
+      <p class="text-slate-600 mt-1">Manage insurance policy products and assignments</p>
+    </div>
+    
+    <div class="p-6">
+      <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+            <i class="fas fa-shield-alt" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-slate-800">Policies</h3>
+            <p class="text-sm text-slate-600">{{ policies.length || 0 }} total</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button (click)="openCreatePolicy()" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm ring-1 ring-emerald-500/50 hover:bg-emerald-700 transition-colors">
+            Add New Policy
+          </button>
+        </div>
+      </div>
+
+      <div [class.hidden]="!policiesCrudError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ policiesCrudError }}</div>
+
+      <div *ngIf="policies?.length; else noPoliciesCrud" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div *ngFor="let p of policies; trackBy: trackById" class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
+                {{ (p.code || 'PO').slice(0,2).toUpperCase() }}
               </div>
               <div>
-                <select [(ngModel)]="policyFilter" (change)="filterPolicies()" 
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                  <option value="">All Types</option>
-                  <option value="Life Insurance">Life Insurance</option>
-                  <option value="Health Insurance">Health Insurance</option>
-                  <option value="Auto Insurance">Auto Insurance</option>
-                  <option value="Home Insurance">Home Insurance</option>
-                  <option value="Travel Insurance">Travel Insurance</option>
-                </select>
+                <div class="text-sm font-semibold text-slate-800">{{ p.title }}</div>
+                <div class="text-xs font-mono text-slate-500">{{ p.code }}</div>
               </div>
             </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-sm text-slate-700 mb-4">
+            <div><span class="text-slate-500">Premium:</span> ₹{{ p.premium }}</div>
+            <div><span class="text-slate-500">Term:</span> {{ p.termMonths }} months</div>
+            <div class="col-span-2"><span class="text-slate-500">Min Sum Insured:</span> {{ p.minSumInsured ?? 0 }}</div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button (click)="openPolicyProductView(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
+              View
+            </button>
+            <button (click)="openAssignAgent(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors">
+              Assign Agent
+            </button>
+            <button (click)="openEditPolicy(p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
+              Edit
+            </button>
+            <button (click)="openDeleteModal('policy', p)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+      <ng-template #noPoliciesCrud>
+        <div class="p-8 text-center text-sm text-slate-600">No policies found.</div>
+      </ng-template>
 
-            <!-- Policies Table -->
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+      <!-- Manage Policy Modal -->
+      <div *ngIf="managePolicyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeManagePolicyModal()">
+        <div class="w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-800">{{ policyFormMode === 'create' ? 'Add Policy' : 'Edit Policy' }}</h3>
+            <button (click)="closeManagePolicyModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+          </div>
+          <div *ngIf="policyFormError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ policyFormError }}</div>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div *ngIf="policyFormMode === 'create'; else editCodeBlock">
+              <label class="mb-1 block text-sm font-medium text-slate-700">Policy Code</label>
+              <div class="flex items-center rounded-xl border border-slate-300 overflow-hidden">
+                <span class="px-3 text-slate-600 select-none">POL</span>
+                <input type="text" class="w-full p-2.5 outline-none" [(ngModel)]="policyCodeDigits" (input)="onPolicyCodeDigitsInput()" [ngModelOptions]="{standalone:true}" placeholder="01" inputmode="numeric" pattern="[0-9]{2,}" title="Enter at least two digits (e.g., 01)" />
+              </div>
+              <p class="mt-1 text-[11px] text-slate-500">Type the number only (e.g., 01). We'll save it as POL01. Auto-generated but editable.</p>
+            </div>
+            <ng-template #editCodeBlock>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Code Number</label>
+              <div class="flex items-center gap-2">
+                <span class="rounded-lg bg-slate-100 px-2 py-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 select-none">POL</span>
+                <input type="text" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyCodeDigits" [ngModelOptions]="{standalone:true}" placeholder="01" (input)="onCodeDigitsChange()" />
+              </div>
+              <p class="mt-1 text-[11px] text-slate-500">Current full code: <span class="font-mono">{{ policyForm.code }}</span></p>
+            </ng-template>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Title</label>
+              <input type="text" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.title" [ngModelOptions]="{standalone:true}" placeholder="Policy Title" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="mb-1 block text-sm font-medium text-slate-700">Description</label>
+              <textarea rows="2" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.description" [ngModelOptions]="{standalone:true}" placeholder="Short description"></textarea>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Premium</label>
+              <input type="number" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.premium" [ngModelOptions]="{standalone:true}" placeholder="1000" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Term (Months)</label>
+              <input type="number" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.termMonths" [ngModelOptions]="{standalone:true}" placeholder="12" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Min Sum Insured</label>
+              <input type="number" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.minSumInsured" [ngModelOptions]="{standalone:true}" placeholder="50000" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-slate-700">Max Sum Insured</label>
+              <input type="number" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.maxSumInsured" [ngModelOptions]="{standalone:true}" placeholder="1000000" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="mb-1 block text-sm font-medium text-slate-700">Assign Agent (Optional)</label>
+              <select class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="policyForm.assignedAgentId" [ngModelOptions]="{standalone:true}">
+                <option value="">-- No Agent Assigned --</option>
+                <option *ngFor="let agent of agents" [value]="agent._id">{{ agent.name }} - ({{ agent.agentCode }})</option>
+              </select>
+              <p class="mt-1 text-[11px] text-slate-500">You can assign an agent to this policy now or later</p>
+              <!-- Debug info -->
+              <div *ngIf="agentsLoading" class="text-xs text-blue-600 mt-1">Loading agents...</div>
+              <div *ngIf="agentsError" class="text-xs text-red-600 mt-1">{{ agentsError }}</div>
+              <div *ngIf="!agentsLoading && !agentsError && agents.length === 0" class="text-xs text-yellow-600 mt-1">No agents available</div>
+              <div *ngIf="!agentsLoading && !agentsError && agents.length > 0" class="text-xs text-green-600 mt-1">{{ agents.length }} agents loaded</div>
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button (click)="closeManagePolicyModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Cancel</button>
+            <button (click)="savePolicy()" class="rounded-full bg-indigo-600 px-4 py-2 text-white shadow-sm ring-1 ring-indigo-500/50 hover:bg-indigo-700">Save</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- User Policies Tab -->
+  <div [class.hidden]="activeTab !== 'user-policies'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">User Policies</h2>
+      <p class="text-gray-600 mt-1">Overview of all customer policies and their details</p>
+    </div>
+    
+    <div class="p-6">
+      <div class="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h3 class="text-lg font-semibold text-gray-800">User Policies (All Customers)</h3>
+          <div class="flex items-center gap-2 w-full md:w-auto">
+            <input type="text" [(ngModel)]="userPoliciesSearch" [ngModelOptions]="{standalone:true}" placeholder="Search by name or email" class="w-full md:w-64 rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div [class.hidden]="!customerDetailsError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ customerDetailsError }}</div>
+        <div [class.hidden]="!customerDetailsLoading" class="p-5 text-sm text-slate-600">Loading user policies...</div>
+        <div class="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm" [class.hidden]="customerDetailsLoading || !filteredUserPoliciesCustomers.length">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Customer</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Email</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Total</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Approved</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pending</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Cancelled</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Claimed</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              <!-- user policies overview rows -->
+              <tr *ngFor="let c of filteredUserPoliciesCustomers; trackBy: trackById" class="hover:bg-slate-50/60">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                      {{ (c?.customer?.name || c?.customer?.email || 'U').slice(0,2).toUpperCase() }}
+                    </div>
+                    <div class="text-sm font-medium text-slate-800">{{ c?.customer?.name || '—' }}</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-700 break-all">{{ c?.customer?.email || '—' }}</td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300">{{ c?.policies?.length || 0 }}</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-600/20">{{ policyCountByStatus(c?.policies, 'approved') }}</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-600/20">{{ policyCountByStatus(c?.policies, 'pending') }}</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-rose-600/20">{{ policyCountByStatus(c?.policies, 'cancelled') }}</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-rose-600/20">{{ policyCountClaimed(c?.policies) }}</span>
+                </td>
+                <td class="px-6 py-4">
+                  <button (click)="openUserPoliciesModal(c)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
+                    View Details
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div [class.hidden]="!customerDetailsLoading && filteredUserPoliciesCustomers.length" class="p-5 text-sm text-slate-600 rounded-xl ring-1 ring-slate-200 bg-white">No user policies found.</div>
+      </div>
+    </div>
+  
+
+  <!-- Customers Tab -->
+  <div [class.hidden]="activeTab !== 'customers'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Customers</h2>
+      <p class="text-gray-600 mt-1">View and manage customer information and policies</p>
+    </div>
+    
+  <div class="p-6">
+    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+            <i class="fas fa-users" style="font-size: 16px; display: block; margin: auto;"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-slate-800">Customer Management</h3>
+            <p class="text-sm text-slate-600">{{ customerDetails.length || 0 }} total customers</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <input type="text" placeholder="Search customers by name or email..." class="w-full md:w-64 rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      
+      <div [class.hidden]="!customerDetailsError" class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ customerDetailsError }}</div>
+      <div [class.hidden]="!(customerDetailsLoading && !customerDetails.length)" class="p-4 text-sm text-slate-600">Loading customers...</div>
+
+      <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm" [class.hidden]="!customerDetails.length">
+        <table class="w-full">
+          <thead class="bg-slate-50">
+            <tr class="divide-x divide-slate-200">
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Customer</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Contact</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Policies</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Payments</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Revenue</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white">
+            <tr *ngFor="let c of customerDetails; trackBy: trackById" class="hover:bg-slate-50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                    {{ (c?.customer?.name || c?.customer?.email || 'U').slice(0,2).toUpperCase() }}
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-slate-800">{{ c?.customer?.name || 'Unknown' }}</div>
+                    <div class="text-[11px] font-mono text-slate-500">ID: {{ c?.customer?._id }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-slate-700 break-all">{{ c?.customer?.email || 'No email' }}</td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800 ring-1 ring-sky-600/20">{{ c?.policies?.length || 0 }} policies</span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-600/20">{{ c?.payments?.length || 0 }} payments</span>
+              </td>
+              <td class="px-6 py-4 text-sm font-medium text-emerald-600">₹{{ getCustomerTotalPaid(c) | number:'1.2-2' }}</td>
+              <td class="px-6 py-4">
+                <div class="flex flex-wrap gap-2">
+                  <button (click)="openCustomerModal(c)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
+                    View Details
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div [class.hidden]="customerDetails.length" class="p-8 text-center text-sm text-slate-600">No customers found. Customer data will appear here once available.</div>
+    </div>
+  </div>
+
+  <!-- Customer Details Modal -->
+  <div *ngIf="showCustomerModal" class="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/40 backdrop-blur-sm overflow-auto py-10" (click)="closeCustomerModal()">
+  <div class="w-full max-w-4xl rounded-xl bg-white p-5 shadow-xl ring-1 ring-slate-200 md:max-h-[85vh] overflow-auto" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Customer Details</h3>
+          <button (click)="closeCustomerModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div *ngIf="selectedCustomer" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Customer</div>
+              <div class="text-sm font-semibold text-slate-800">{{ selectedCustomer.customer?.name }}</div>
+              <div class="text-xs text-slate-600 break-all">{{ selectedCustomer.customer?.email }}</div>
+              <div class="mt-1 text-[11px] font-mono text-slate-500">ID: {{ selectedCustomer.customer?._id }}</div>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Stats</div>
+              <div class="text-xs text-slate-600">Policies: <span class="font-medium text-slate-800">{{ selectedCustomer.policies?.length || 0 }}</span></div>
+              <div class="text-xs text-slate-600">Payments: <span class="font-medium text-slate-800">{{ selectedCustomer.payments?.length || 0 }}</span></div>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Notes</div>
+              <div class="text-[11px] text-slate-600">Click columns to sort (future enhancement).</div>
+            </div>
+          </div>
+
+          <!-- Policies Table -->
+          <div>
+            <div class="mb-2 text-sm font-semibold text-slate-700">Policies</div>
+            <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Policy</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Sum Insured</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Agent</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Code</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Title</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Premium</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Term</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Start</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">End</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Assigned Agent</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr *ngFor="let policy of filteredPolicies; trackBy: trackByPolicy">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm font-medium text-gray-900">{{policy.name || policy.title}}</div>
-                        <div class="text-sm text-gray-500">ID: {{policy._id}}</div>
-                      </div>
+                <tbody class="divide-y divide-slate-100 bg-white" *ngIf="selectedCustomer?.policies?.length; else noPoliciesModal">
+                  <tr *ngFor="let p of selectedCustomer?.policies; trackBy: trackById" class="hover:bg-slate-50/60">
+                    <td class="px-3 py-2 text-sm text-slate-900">{{ (p?._product?.code) || '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ (p?._product?.title) || '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">₹{{ (p?._product?.premium) ?? p?.premiumPaid ?? '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?._product?.termMonths ? (p?._product?.termMonths + ' mo') : '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?.startDate | date: 'mediumDate' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?.endDate | date: 'mediumDate' }}</td>
+                    <td class="px-3 py-2 text-sm">
+                      <span class="rounded-full px-2 py-1 text-xs font-medium"
+                        [ngClass]="{
+                          'bg-amber-50 text-amber-700 ring-1 ring-amber-200': (p?.status || '').toLowerCase() === 'pending',
+                          'bg-rose-50 text-rose-700 ring-1 ring-rose-200': ['claimed','cancelled'].includes((p?.status || '').toLowerCase()),
+                          'bg-slate-100 text-slate-700 ring-1 ring-slate-300': (p?.status || '').toLowerCase() === 'expired'}">{{ p?.status || '—' }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{policy.type}}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{policy.minSumInsured | number}}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" 
-                            [ngClass]="{
-                              'bg-yellow-100 text-yellow-800': policy.status === 'Pending' || policy.status === 'pending',
-                              'bg-green-100 text-green-800': policy.status === 'Approved' || policy.status === 'approved' || policy.status === 'Active',
-                              'bg-red-100 text-red-800': policy.status === 'Inactive' || policy.status === 'Cancelled'
-                            }">
-                        {{policy.status | uppercase}}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span *ngIf="policy.assignedAgentName" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        <i class="fas fa-user mr-1"></i>
-                        {{policy.assignedAgentName}}
-                      </span>
-                      <span *ngIf="!policy.assignedAgentName" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        <i class="fas fa-user-times mr-1"></i>
-                        Not Assigned
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button (click)="viewPolicy(policy)" class="text-blue-600 hover:text-blue-900">
-                        <i class="fas fa-eye"></i>
-                      </button>
-                      <button (click)="editPolicy(policy)" class="text-green-600 hover:text-green-900">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button (click)="deletePolicy(policy)" class="text-red-600 hover:text-red-900">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                      <button (click)="openAssignAgent(policy._id || policy.id || '')" class="text-indigo-600 hover:text-indigo-900" title="Assign Agent">
-                        <i class="fas fa-user-plus"></i>
-                      </button>
+                    <td class="px-3 py-2 text-sm text-slate-700">
+                      <ng-container *ngIf="p?.assignedAgentId; else agentFromProductModal">
+                        {{ p?.assignedAgentId?.name || '—' }} <span class="text-slate-500">({{ p?.assignedAgentId?.email || '—' }})</span>
+                      </ng-container>
+                      <ng-template #agentFromProductModal>
+                        <ng-container *ngIf="p?._product?.assignedAgentName; else noAgentModal">{{ p?._product?.assignedAgentName }}</ng-container>
+                      </ng-template>
+                      <ng-template #noAgentModal>—</ng-template>
                     </td>
                   </tr>
                 </tbody>
               </table>
-              
-              <!-- Empty state -->
-              <div *ngIf="filteredPolicies.length === 0" class="text-center py-8">
-                <div class="text-gray-500">
-                  <i class="fas fa-folder-open text-4xl mb-2"></i>
-                  <p class="text-lg">No policies found</p>
-                  <p class="text-sm">{{policies.length === 0 ? 'Add your first policy to get started' : 'Try adjusting your search criteria'}}</p>
-                </div>
-              </div>
+              <ng-template #noPoliciesModal>
+                <div class="p-4 text-sm text-slate-600">No policies for this customer.</div>
+              </ng-template>
             </div>
+          </div>
+
+          <!-- Payments Table -->
+          <div>
+            <div class="mb-2 text-sm font-semibold text-slate-700">Payments</div>
+            <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Amount</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Date</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Method</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white" *ngIf="selectedCustomer?.payments?.length; else noPaymentsModal">
+                  <tr *ngFor="let pay of selectedCustomer?.payments; trackBy: trackById" class="hover:bg-slate-50/60">
+                    <td class="px-3 py-2 text-sm text-slate-900">₹{{ pay?.amount || 0 }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ pay?.createdAt | date: 'mediumDate' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ pay?.method || 'Simulated' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <ng-template #noPaymentsModal>
+                <div class="p-4 text-sm text-slate-600">No payments for this customer.</div>
+              </ng-template>
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-4">
+            <button (click)="closeCustomerModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Edit Policy Modal -->
-        <div *ngIf="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Edit Policy</h3>
+    <!-- User Policies Modal -->
+    <div *ngIf="showUserPoliciesModal" class="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/40 backdrop-blur-sm overflow-auto py-10" (click)="closeUserPoliciesModal()">
+      <div class="w-full max-w-5xl rounded-xl bg-white p-5 shadow-xl ring-1 ring-slate-200 md:max-h-[85vh] overflow-auto" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">User Policies - {{ selectedUserPoliciesCustomer?.customer?.name || 'Customer' }}</h3>
+          <button (click)="closeUserPoliciesModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div *ngIf="selectedUserPoliciesCustomer" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="uppercase tracking-wide text-slate-500 mb-1">Customer</div>
+              <div class="text-sm font-semibold text-slate-800">{{ selectedUserPoliciesCustomer.customer?.name }}</div>
+              <div class="text-[11px] text-slate-600 break-all">{{ selectedUserPoliciesCustomer.customer?.email }}</div>
+              <div class="mt-1 text-[11px] font-mono text-slate-500">ID: {{ selectedUserPoliciesCustomer.customer?._id }}</div>
             </div>
-            <form (ngSubmit)="updatePolicy()" #editPolicyForm="ngForm" class="p-4">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Policy Code <span class="text-red-500">*</span>
-                  </label>
-                  <input type="text" [(ngModel)]="editingPolicy.code" name="editCode" required 
-                         placeholder="Enter policy code"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                         [class.border-red-500]="!editingPolicy.code">
-                  <div *ngIf="!editingPolicy.code" class="text-red-500 text-xs mt-1">Policy code is required</div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Policy Title <span class="text-red-500">*</span>
-                  </label>
-                  <input type="text" [(ngModel)]="editingPolicy.title" name="editTitle" required 
-                         placeholder="Enter policy title"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                         [class.border-red-500]="!editingPolicy.title">
-                  <div *ngIf="!editingPolicy.title" class="text-red-500 text-xs mt-1">Policy title is required</div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Policy Type <span class="text-red-500">*</span>
-                  </label>
-                  <select [(ngModel)]="editingPolicy.type" name="editType" required 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          [class.border-red-500]="!editingPolicy.type">
-                    <option value="">Select policy type</option>
-                    <option value="Life Insurance">Life Insurance</option>
-                    <option value="Health Insurance">Health Insurance</option>
-                    <option value="Auto Insurance">Auto Insurance</option>
-                    <option value="Home Insurance">Home Insurance</option>
-                    <option value="Travel Insurance">Travel Insurance</option>
-                  </select>
-                  <div *ngIf="!editingPolicy.type" class="text-red-500 text-xs mt-1">Policy type is required</div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Min Sum Insured ($) <span class="text-red-500">*</span>
-                  </label>
-                  <input type="number" [(ngModel)]="editingPolicy.minSumInsured" name="editMinSumInsured" required 
-                         min="0" step="0.01" placeholder="0.00"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                         [class.border-red-500]="!editingPolicy.minSumInsured || editingPolicy.minSumInsured <= 0">
-                  <div *ngIf="!editingPolicy.minSumInsured || editingPolicy.minSumInsured <= 0" class="text-red-500 text-xs mt-1">Valid minimum sum insured is required</div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Term Months <span class="text-red-500">*</span>
-                  </label>
-                  <input type="number" [(ngModel)]="editingPolicy.termMonths" name="editTermMonths" required 
-                         min="1" step="1" placeholder="12"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                         [class.border-red-500]="!editingPolicy.termMonths || editingPolicy.termMonths <= 0">
-                  <div *ngIf="!editingPolicy.termMonths || editingPolicy.termMonths <= 0" class="text-red-500 text-xs mt-1">Valid term months is required</div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Tenure Months <span class="text-red-500">*</span>
-                  </label>
-                  <input type="number" [(ngModel)]="editingPolicy.tenureMonths" name="editTenureMonths" required 
-                         min="1" step="1" placeholder="120"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                         [class.border-red-500]="!editingPolicy.tenureMonths || editingPolicy.tenureMonths <= 0">
-                  <div *ngIf="!editingPolicy.tenureMonths || editingPolicy.tenureMonths <= 0" class="text-red-500 text-xs mt-1">Valid tenure months is required</div>
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select [(ngModel)]="editingPolicy.status" name="editStatus" 
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea [(ngModel)]="editingPolicy.description" name="editDescription" rows="3" 
-                            placeholder="Enter policy description"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-              </div>
-              <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" (click)="cancelEdit()" 
-                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200">
-                  Cancel
-                </button>
-                <button type="submit" [disabled]="!editPolicyForm.form.valid" 
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md text-sm font-medium transition duration-200">
-                  Update Policy
-                </button>
-              </div>
-            </form>
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="uppercase tracking-wide text-slate-500 mb-1">Total Policies</div>
+              <div class="text-lg font-semibold text-slate-800">{{ selectedUserPoliciesCustomer.policies?.length || 0 }}</div>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="uppercase tracking-wide text-slate-500 mb-1">Approved</div>
+              <div class="text-lg font-semibold text-emerald-600">{{ policyCountByStatus(selectedUserPoliciesCustomer.policies, 'approved') }}</div>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div class="uppercase tracking-wide text-slate-500 mb-1">Pending</div>
+              <div class="text-lg font-semibold text-amber-600">{{ policyCountByStatus(selectedUserPoliciesCustomer.policies, 'pending') }}</div>
+            </div>
+          </div>
+
+          <!-- Policies Table -->
+          <div>
+            <div class="mb-2 text-sm font-semibold text-slate-700">Policies</div>
+            <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Policy ID</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Product</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Start</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">End</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Premium</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white" *ngIf="selectedUserPoliciesCustomer?.policies?.length; else noUserPoliciesRows">
+                  <tr *ngFor="let p of selectedUserPoliciesCustomer?.policies; trackBy: trackById" class="hover:bg-slate-50/60">
+                    <td class="px-3 py-2 text-sm font-mono text-slate-700">{{ p?._id || '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?.policyProductId?.title || p?.policyProductId?.code || p?.policyProductId || p?._product?.title || p?._product?.code || '—' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?.startDate | date: 'mediumDate' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ p?.endDate | date: 'mediumDate' }}</td>
+                    <td class="px-3 py-2 text-sm">
+                      <span class="rounded-full px-2 py-1 text-xs font-medium"
+                        [ngClass]="{
+                          'bg-amber-50 text-amber-700 ring-1 ring-amber-200': (p?.status || '').toLowerCase() === 'pending',
+                          'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200': (p?.status || '').toLowerCase() === 'approved',
+                          'bg-rose-50 text-rose-700 ring-1 ring-rose-200': ['claimed','cancelled'].includes((p?.status || '').toLowerCase()),
+                          'bg-slate-100 text-slate-700 ring-1 ring-slate-300': (p?.status || '').toLowerCase() === 'expired'
+                        }">{{ p?.status || '—' }}</span>
+                    </td>
+                    <td class="px-3 py-2 text-sm text-slate-700">₹{{ p?.premiumPaid || p?.policyProductId?.premium || p?._product?.premium || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <ng-template #noUserPoliciesRows>
+                <div class="p-4 text-sm text-slate-600">No policies.</div>
+              </ng-template>
+            </div>
+          </div>
+
+          <!-- Payments Summary -->
+          <div>
+            <div class="mb-2 text-sm font-semibold text-slate-700">Payments</div>
+            <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Amount</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Date Paid</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Due Month</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Next Due Month</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Method</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white" *ngIf="selectedUserPoliciesCustomer?.payments?.length; else noUserPoliciesPayments">
+                  <tr *ngFor="let pay of selectedUserPoliciesCustomer?.payments; let i = index; trackBy: trackById" class="hover:bg-slate-50/60">
+                    <td class="px-3 py-2 text-sm text-slate-900">₹{{ pay?.amount || 0 }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ pay?.datePaid ? (pay.datePaid | date: 'mediumDate') : (pay?.createdAt | date: 'mediumDate') }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ computeDueDate(pay) | date: 'MMM yyyy' }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ computeNextDueDate(pay) | date: 'MMM yyyy' }}</td>
+                    <td class="px-3 py-2 text-sm">
+                      <span class="rounded-full px-2 py-1 text-xs font-medium"
+                        [ngClass]="paymentService.getPaymentStatusClasses(paymentService.computePaymentStatus(pay))">{{ paymentService.computePaymentStatus(pay) }}</span>
+                    </td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ pay?.method || 'Simulated' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <ng-template #noUserPoliciesPayments>
+                <div class="p-4 text-sm text-slate-600">No payments for this customer.</div>
+              </ng-template>
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-4">
+            <button (click)="closeUserPoliciesModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- View Policy Modal -->
-        <div *ngIf="showViewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-lg max-w-lg w-full mx-4">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Policy Details</h3>
-            </div>
-            <div class="p-4">
-              <div class="space-y-3">
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Policy ID:</span>
-                  <span class="text-gray-900">{{viewingPolicy.id}}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Code:</span>
-                  <span class="text-gray-900">{{viewingPolicy.code}}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Title:</span>
-                  <span class="text-gray-900">{{viewingPolicy.title}}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Type:</span>
-                  <span class="text-gray-900">{{viewingPolicy.type}}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Min Sum Insured:</span>
-                  <span class="text-gray-900">${{viewingPolicy.minSumInsured | number}}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Term Months:</span>
-                  <span class="text-gray-900">{{viewingPolicy.termMonths}} months</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Tenure Months:</span>
-                  <span class="text-gray-900">{{viewingPolicy.tenureMonths}} months</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Status:</span>
-                  <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" 
-                        [class]="viewingPolicy.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-                    {{viewingPolicy.status}}
-                  </span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="font-medium text-gray-700">Created:</span>
-                  <span class="text-gray-900">{{viewingPolicy.createdAt | date}}</span>
-                </div>
-                <div *ngIf="viewingPolicy.description">
-                  <span class="font-medium text-gray-700">Description:</span>
-                  <p class="text-gray-900 mt-1">{{viewingPolicy.description}}</p>
-                </div>
+    <!-- Unified Delete Confirmation Modal -->
+    <div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="!deleteLoading && closeDeleteModal()">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Confirm Deletion</h3>
+          <button (click)="closeDeleteModal()" [disabled]="deleteLoading" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50">✕</button>
+        </div>
+        <div class="space-y-4 text-sm text-slate-700">
+          <p>
+            Are you sure you want to permanently delete this
+            <span class="font-medium" *ngIf="deleteTargetType === 'policy'">policy</span>
+            <span class="font-medium" *ngIf="deleteTargetType === 'agent'">agent</span>? This action cannot be undone.
+          </p>
+          <div class="rounded-xl bg-slate-50 p-4 text-xs text-slate-600 ring-1 ring-slate-200" *ngIf="deleteTarget">
+            <ng-container [ngSwitch]="deleteTargetType">
+              <div *ngSwitchCase="'policy'">
+                <div><span class="font-semibold text-slate-700">Code:</span> {{ deleteTarget?.code }}</div>
+                <div><span class="font-semibold text-slate-700">Title:</span> {{ deleteTarget?.title || '—' }}</div>
+                <div *ngIf="deleteTarget?.premium != null"><span class="font-semibold text-slate-700">Premium:</span> ₹{{ deleteTarget?.premium }}</div>
               </div>
-            </div>
-            <div class="p-4 border-t border-gray-200 flex justify-end">
-              <button (click)="closeViewModal()" 
-                      class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm font-medium transition duration-200">
-                Close
-              </button>
-            </div>
+              <div *ngSwitchCase="'agent'">
+                <div><span class="font-semibold text-slate-700">Name:</span> {{ deleteTarget?.name }}</div>
+                <div><span class="font-semibold text-slate-700">Email:</span> {{ deleteTarget?.email }}</div>
+                <div class="mt-1 text-[11px] font-mono text-slate-500">ID: {{ deleteTarget?._id }}</div>
+              </div>
+            </ng-container>
+          </div>
+          <div class="flex items-center gap-2 text-xs" *ngIf="deleteLoading">
+            <svg class="h-4 w-4 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span>Deleting...</span>
           </div>
         </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button (click)="closeDeleteModal()" [disabled]="deleteLoading" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 disabled:opacity-50">Cancel</button>
+          <button (click)="confirmDelete()" [disabled]="deleteLoading" class="rounded-full bg-rose-600 px-4 py-2 text-white shadow-sm ring-1 ring-rose-500/50 hover:bg-rose-700 disabled:opacity-50">{{ deleteLoading ? 'Deleting...' : 'Delete' }}</button>
+        </div>
+      </div>
+    </div>
+  
+  <!-- Claims Management Tab -->
+  <div [class.hidden]="activeTab !== 'claims'" class="mt-8 bg-white rounded-lg shadow-md">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Claims Management</h2>
+      <p class="text-gray-600 mt-1">Process and manage insurance claims from customers</p>
+    </div>
+    
+    <div class="p-6">
+      <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h3 class="text-lg font-semibold text-slate-800">Claims Processing</h3>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <input type="text" placeholder="Search claims by customer or policy..." class="w-full md:w-64 rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          
+        </div>
+      </div>
 
-        <!-- Recent Activities -->
-        <div class="bg-white rounded-lg shadow-xs">
-          <div class="p-4 border-b border-gray-200">
-            <h4 class="text-lg font-semibold text-gray-800">Recent Activities</h4>
+      <!-- Pending Claims Section -->
+      <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div class="flex items-center justify-between border-b border-slate-200 p-6">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <i class="fas fa-clock" style="font-size: 16px; display: block; margin: auto;"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-slate-800">Pending Claims</h3>
+              <p class="text-sm text-slate-600">Claims awaiting review and approval</p>
+            </div>
           </div>
-          <div class="p-4">
-            <div class="space-y-4">
-              <div *ngFor="let activity of recentActivities" class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                    </svg>
+          <div class="text-sm text-slate-600">{{ pendingClaims.length || 0 }} pending</div>
+        </div>
+        
+        <div [class.hidden]="!pendingError" class="mx-6 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ pendingError }}</div>
+        <div [class.hidden]="!(isLoadingPending && !pendingClaims.length)" class="p-6 text-sm text-slate-600">Loading claims...</div>
+
+        <div class="overflow-hidden" [class.hidden]="!pendingClaims.length">
+          <table class="w-full">
+            <thead class="bg-slate-50">
+              <tr class="divide-x divide-slate-200">
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Claim</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Customer</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Policy</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Amount</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <tr *ngFor="let c of pendingClaims; trackBy: trackById" class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-mediu0">
+                      <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                      <div class="text-sm font-medium text-slate-800">{{ c._id }}</div>
+                      <div class="text-xs text-slate-500">{{ c.incidentDate | date:'mediumDate' }}</div>
+                    </div>
                   </div>
-                </div>
-                <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-900">{{activity.type}}</p>
-                  <p class="text-sm text-gray-500">{{activity.user}} • {{activity.timestamp}}</p>
-                </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-700">{{ c.userId?.name || c.userId?.email || c.userId }}</td>
+                <td class="px-6 py-4">
+                  <div class="text-sm font-medium text-slate-800">{{ c._policyCode || c.userPolicyId?.policyProductId?.code || 'N/A' }}</div>
+                  <div class="text-xs text-slate-500">{{ c._policyTitle || c.userPolicyId?.policyProductId?.title || 'N/A' }}</div>
+                </td>
+                <td class="px-6 py-4 text-sm font-medium text-amber-600">₹{{ c.amountClaimed | number:'1.2-2' }}</td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-600/20">
+                    {{ c.status }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-wrap gap-2">
+                    <!-- Edit Claim -->
+                    <button (click)="openEditClaim(c)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors">
+                      Edit
+                    </button>
+                    <button (click)="approve(c._id)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors">
+                      Approve
+                    </button>
+                    <button (click)="reject(c._id)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors">
+                      Reject
+                    </button>
+                    <button (click)="openClaimView(c)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">
+                      View Details
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div [class.hidden]="pendingClaims.length" class="p-8 text-center text-sm text-slate-600">No pending claims found. Claims awaiting approval will appear here.</div>
+      </div>
+      
+      <!-- Additional Claims Sections -->
+      <div class="mt-8">
+        <div class="mb-4">
+          <h4 class="text-lg font-semibold text-slate-800">Processed Claims</h4>
+          <p class="text-sm text-slate-600">View approved and rejected claims</p>
+        </div>
+        <!-- Processed Claims -->
+        <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-center justify-between border-b border-slate-200 p-6">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 shrink-0">
+                <i class="fas fa-gavel" style="font-size: 16px; display: block; margin: auto;"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-slate-800">Processed Claims</h3>
+                <p class="text-sm text-slate-600">Approved and rejected claims overview</p>
               </div>
             </div>
+            
           </div>
-        </div>
-
-        <!-- Assign Agent to Policy Modal -->
-        <div *ngIf="assignAgentPolicyId" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Assign Policy to Agent</h3>
-            </div>
-            <form (ngSubmit)="assignAgentToPolicy()" class="p-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
-              <select [(ngModel)]="selectedAgentId" name="assignAgentSelect" required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4">
-                <option value="" disabled>Select an agent</option>
-                <option *ngFor="let agent of agents" [value]="agent._id">{{agent.name}} ({{agent.email}})</option>
-              </select>
-              <div class="flex justify-end space-x-2">
-                <button type="button" (click)="assignAgentPolicyId = null; selectedAgentId = null;" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Cancel</button>
-                <button type="submit" [disabled]="!selectedAgentId" class="px-4 py-2 rounded bg-blue-600 text-white font-semibold">Assign</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Assign Agent to Claim Modal -->
-        <div *ngIf="assignAgentClaimId" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Assign Claim to Agent</h3>
-            </div>
-            <form (ngSubmit)="assignAgentToClaim()" class="p-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
-              <select [(ngModel)]="selectedAgentId" name="assignAgentClaimSelect" required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4">
-                <option value="" disabled>Select an agent</option>
-                <option *ngFor="let agent of agents" [value]="agent._id">{{agent.name}} ({{agent.email}})</option>
-              </select>
-              <div class="flex justify-end space-x-2">
-                <button type="button" (click)="assignAgentClaimId = null; selectedAgentId = null;" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Cancel</button>
-                <button type="submit" [disabled]="!selectedAgentId" class="px-4 py-2 rounded bg-blue-600 text-white font-semibold">Assign</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Agents Section -->
-        <div class="bg-white rounded-lg shadow-xs" *ngIf="showAgentsSection">
-          <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h4 class="text-lg font-semibold text-gray-800">Agents</h4>
-          </div>
-          <div class="p-4">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent Name</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+          <div [class.hidden]="!processedClaimsError" class="mx-6 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ processedClaimsError }}</div>
+          <div class="overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-slate-50">
+                <tr class="divide-x divide-slate-200">
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Claim</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Customer</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Policy</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Amount</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Approved By</th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr *ngFor="let agent of agents">
-                  <td class="px-6 py-4 whitespace-nowrap">{{agent.name}}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">{{agent.email}}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">{{agent.phone}}</td>
+              <tbody class="divide-y divide-slate-200 bg-white" [class.hidden]="!processedClaims.length">
+                <tr *ngFor="let c of processedClaims; trackBy: trackById" class="hover:bg-slate-50 transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium"
+                           [ngClass]="{
+                             'bg-emerald-100 text-emerald-600': (c.status || '').toLowerCase() === 'approved',
+                             'bg-rose-100 text-rose-600': (c.status || '').toLowerCase() === 'rejected'
+                           }">
+                        <span [class.hidden]="(c.status || '').toLowerCase() !== 'approved'">
+                          <i class="fas fa-check"></i>
+                        </span>
+                        <span [class.hidden]="(c.status || '').toLowerCase() !== 'rejected'">
+                          <i class="fas fa-times"></i>
+                        </span>
+                      </div>
+                      <div>
+                        <div class="text-sm font-medium text-slate-800">{{ c._id }}</div>
+                        <div class="text-xs text-slate-500">{{ c.incidentDate | date:'mediumDate' }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-700">{{ c.userId?.name || c.userId?.email || c.userId }}</td>
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-slate-800">{{ c.userPolicyId?.policyProductId?.code || 'N/A' }}</div>
+                    <div class="text-xs text-slate-500">{{ c.userPolicyId?.policyProductId?.title || 'N/A' }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-sm font-medium"
+                      [ngClass]="{
+                        'text-emerald-600': (c.status || '').toLowerCase() === 'approved',
+                        'text-rose-600': (c.status || '').toLowerCase() === 'rejected'
+                      }">
+                    ₹{{ c.amountClaimed | number:'1.2-2' }}
+                  </td>
+                  <td class="px-6 py-4">
+                    <span [ngClass]="{
+                      'bg-emerald-100 text-emerald-800 ring-emerald-600/20': (c.status || '').toLowerCase() === 'approved',
+                      'bg-rose-100 text-rose-800 ring-rose-600/20': (c.status || '').toLowerCase() === 'rejected'
+                    }" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
+                      {{ c.status }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1"
+                          [ngClass]="verificationService.getVerificationTypeClasses(c.verificationType)">
+                      {{ verificationService.getVerificationTypeDisplay(c.verificationType) }}
+                    </span>
+                  </td>
                 </tr>
               </tbody>
             </table>
-            <div *ngIf="agents.length === 0" class="text-center py-8">
-              <div class="text-gray-500">
-                <i class="fas fa-user-friends text-4xl mb-2"></i>
-                <p class="text-lg">No agents found</p>
-                <p class="text-sm">Agents will appear here once added to the system.</p>
-              </div>
-            </div>
+            <div [class.hidden]="processedClaims.length" class="p-8 text-center text-sm text-slate-600">No processed claims found.</div>
           </div>
         </div>
+      </div>
 
-        <!-- Pending Policies Section -->
-        <section *ngIf="currentSection === 'pendingPolicies'" class="p-6 bg-white shadow-md rounded-md mt-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Pending Policies</h2>
+      <!-- All Claims History -->
+      <div class="mt-8">
+        <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div class="flex items-center justify-between border-b border-slate-200 p-6">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0">
+                <i class="fas fa-clipboard-list" style="font-size: 16px; display: block; margin: auto;"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-slate-800">All Claims History</h3>
+                <p class="text-sm text-slate-600">Complete claims record</p>
+              </div>
+            </div>
+            
           </div>
-          <div *ngIf="pendingPolicies.length > 0; else noPendingPolicies">
-            <table class="table-auto w-full border-collapse border border-gray-300">
-              <thead>
-                <tr>
-                  <th class="border border-gray-300 px-4 py-2">Policy Code</th>
-                  <th class="border border-gray-300 px-4 py-2">Title</th>
-                  <th class="border border-gray-300 px-4 py-2">Customer</th>
-                  <th class="border border-gray-300 px-4 py-2">Status</th>
-                  <th class="border border-gray-300 px-4 py-2">Actions</th>
+          <div [class.hidden]="!allClaimsError" class="mx-6 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 shadow-sm">{{ allClaimsError }}</div>
+          <div class="overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-slate-50">
+                <tr class="divide-x divide-slate-200">
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Claim</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Customer</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Policy</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Amount</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-600">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr *ngFor="let policy of pendingPolicies">
-                  <td class="border border-gray-300 px-4 py-2">{{policy.policyCode || policy.code}}</td>
-                  <td class="border border-gray-300 px-4 py-2">{{policy.policyTitle || policy.title}}</td>
-                  <td class="border border-gray-300 px-4 py-2">{{policy.customerName}}</td>
-                  <td class="border border-gray-300 px-4 py-2">
-                    <span class="px-2 py-1 rounded text-sm" 
-                          [ngClass]="{'bg-yellow-200 text-yellow-800': policy.status === 'Pending' || policy.status === 'pending', 'bg-green-200 text-green-800': policy.status === 'Approved' || policy.status === 'approved'}">
-                      {{policy.status | uppercase}}
+              <tbody class="divide-y divide-slate-200 bg-white" [class.hidden]="!allClaims.length">
+                <tr *ngFor="let c of allClaims; trackBy: trackById" class="hover:bg-slate-50 transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 text-xs font-mediu0">
+                        <i class="fas fa-file-alt"></i>
+                      </div>
+                      <div>
+                        <div class="text-sm font-medium text-slate-800">{{ c._id }}</div>
+                        <div class="text-xs text-slate-500">{{ c.incidentDate | date:'mediumDate' }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-700">{{ c.userId?.name || c.userId?.email || c.userId }}</td>
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-slate-800">{{ c.userPolicyId?.policyProductId?.code || 'N/A' }}</div>
+                    <div class="text-xs text-slate-500">{{ c.userPolicyId?.policyProductId?.title || 'N/A' }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-sm font-medium text-slate-800">₹{{ c.amountClaimed | number:'1.2-2' }}</td>
+                  <td class="px-6 py-4">
+                    <span [ngClass]="{
+                      'bg-amber-100 text-amber-800 ring-amber-600/20': (c.status || '').toLowerCase() === 'pending',
+                      'bg-emerald-100 text-emerald-800 ring-emerald-600/20': (c.status || '').toLowerCase() === 'approved',
+                      'bg-rose-100 text-rose-800 ring-rose-600/20': (c.status || '').toLowerCase() === 'rejected'
+                    }" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
+                      {{ c.status }}
                     </span>
                   </td>
-                  <td class="border border-gray-300 px-4 py-2">
-                    <button (click)="approvePolicy(policy.userPolicyId ?? policy._id ?? '')" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md"
-                            [disabled]="policy.status === 'Approved' || policy.status === 'approved'">
-                      {{(policy.status === 'Approved' || policy.status === 'approved') ? 'Approved' : 'Approve'}}
+                  <td class="px-6 py-4">
+                    <button (click)="openClaimView(c)" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors">
+                      View Details
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
+            <div [class.hidden]="allClaims.length" class="p-8 text-center text-sm text-slate-600">No claims found.</div>
           </div>
-          <ng-template #noPendingPolicies>
-            <p class="text-gray-600">No pending policies available.</p>
-          </ng-template>
-        </section>
-
-        <section *ngIf="currentSection === 'approvedPolicies'" class="p-6 bg-white shadow-md rounded-md mt-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Approved Policies</h2>
-          </div>
-          <div *ngIf="approvedPolicies.length > 0; else noApprovedPolicies">
-            <table class="table-auto w-full border-collapse border border-gray-300">
-              <thead>
-                <tr>
-                  <th class="border border-gray-300 px-4 py-2">Policy Code</th>
-                  <th class="border border-gray-300 px-4 py-2">Title</th>
-                  <th class="border border-gray-300 px-4 py-2">Customer</th>
-                  <th class="border border-gray-300 px-4 py-2">Status</th>
-                  <th class="border border-gray-300 px-4 py-2">Purchase Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                  <tr *ngFor="let policy of approvedPolicies">
-                    <td class="border border-gray-300 px-4 py-2">{{policy.policyCode || policy.code}}</td>
-                    <td class="border border-gray-300 px-4 py-2">{{policy.title}}</td>
-                    <td class="border border-gray-300 px-4 py-2">{{policy.customerName}}</td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <span class="px-2 py-1 rounded text-sm" 
-                            [ngClass]="getStatusColor(policy.status || 'unknown')">
-                        {{(policy.status || 'Unknown') | uppercase}}
-                      </span>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">{{policy.purchaseDate | date:'short'}} </td>
-                  </tr>
-              </tbody>
-            </table>
-
-            <!-- User Policies Table -->
-            <div *ngIf="userPolicies.length > 0" class="mt-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Purchased Policies</h3>
-                <table class="table-auto w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr>
-                      <th class="border border-gray-300 px-4 py-2">Policy Code</th>
-                      <th class="border border-gray-300 px-4 py-2">Title</th>
-                      <th class="border border-gray-300 px-4 py-2">Status</th>
-                      <th class="border border-gray-300 px-4 py-2">Purchase Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let policy of dedupedUserPolicies">
-                      <td class="border border-gray-300 px-4 py-2">{{policy.policyProductId?.code}}</td>
-                      <td class="border border-gray-300 px-4 py-2">{{policy.policyProductId?.title}}</td>
-                      <td class="border border-gray-300 px-4 py-2">
-                        <span class="px-2 py-1 rounded text-sm" 
-                              [ngClass]="getStatusColor(policy.status)">
-                          {{policy.status | uppercase}}
-                        </span>
-                      </td>
-                      <td class="border border-gray-300 px-4 py-2">{{policy.createdAt | date:'short'}} </td>
-                    </tr>
-                  </tbody>
-                </table>
-            </div>
-          </div>
-          <ng-template #noApprovedPolicies>
-            <p class="text-gray-600">No approved policies available.</p>
-          </ng-template>
-        </section>
-
-        <!-- Claims Management Section -->
-        <section *ngIf="currentSection === 'claims'" class="p-6 bg-white shadow-md rounded-md mt-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Claims Management</h2>
-            <div class="flex items-center space-x-4">
-              <!-- Claims Status Filter -->
-              <select [(ngModel)]="claimStatusFilter" (change)="filterClaims()" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                <option value="">All Claims</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-              <button (click)="loadAllClaims()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
-                <i class="fas fa-sync mr-1"></i> Refresh
-              </button>
-            </div>
-          </div>
-          
-          <!-- Claims Statistics -->
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-yellow-600">Pending Claims</p>
-                  <p class="text-2xl font-bold text-yellow-800">{{claimStats.pending}}</p>
-                </div>
-                <i class="fas fa-clock text-yellow-500 text-xl"></i>
-              </div>
-            </div>
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-green-600">Approved Claims</p>
-                  <p class="text-2xl font-bold text-green-800">{{claimStats.approved}}</p>
-                </div>
-                <i class="fas fa-check-circle text-green-500 text-xl"></i>
-              </div>
-            </div>
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-red-600">Rejected Claims</p>
-                  <p class="text-2xl font-bold text-red-800">{{claimStats.rejected}}</p>
-                </div>
-                <i class="fas fa-times-circle text-red-500 text-xl"></i>
-              </div>
-            </div>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-blue-600">Total Claims</p>
-                  <p class="text-2xl font-bold text-blue-800">{{claimStats.total}}</p>
-                </div>
-                <i class="fas fa-file-invoice-dollar text-blue-500 text-xl"></i>
-              </div>
-            </div>
-          </div>
-
-          <!-- Claims Table -->
-          <div *ngIf="filteredClaims.length > 0; else noClaims" class="overflow-x-auto">
-            <table class="table-auto w-full border-collapse border border-gray-300">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Policy</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Incident Type</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filed Date</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr *ngFor="let claim of filteredClaims; trackBy: trackByClaim" class="hover:bg-gray-50">
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                    {{claim._id.substring(claim._id.length - 8)}}
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      <div class="font-medium">{{claim.userId.name || 'Unknown'}}</div>
-                      <div class="text-gray-500">{{claim.userId.email}}</div>
-                    </div>
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      <div class="font-medium">{{claim.userPolicyId?.policyProductId?.title || 'Policy'}}</div>
-                      <div class="text-gray-500">{{claim.userPolicyId?.policyProductId?.code}}</div>
-                    </div>
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{claim.incidentType || 'Not specified'}}
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    ${{claim.amountClaimed | number:'1.2-2'}}
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                          [class.bg-yellow-100]="claim.status === 'Pending'"
-                          [class.text-yellow-800]="claim.status === 'Pending'"
-                          [class.bg-green-100]="claim.status === 'Approved'"
-                          [class.text-green-800]="claim.status === 'Approved'"
-                          [class.bg-red-100]="claim.status === 'Rejected'"
-                          [class.text-red-800]="claim.status === 'Rejected'">
-                      {{claim.status}}
-                    </span>
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{claim.createdAt | date:'medium'}}
-                  </td>
-                  <td class="border border-gray-300 px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <div class="flex space-x-2">
-                      <button (click)="viewClaimDetails(claim)" 
-                              class="text-blue-600 hover:text-blue-900 px-2 py-1 rounded text-xs border border-blue-200 hover:bg-blue-50">
-                        <i class="fas fa-eye mr-1"></i> View
-                      </button>
-                      <button *ngIf="claim.status === 'Pending'" 
-                              (click)="approveClaimModal(claim)" 
-                              class="text-green-600 hover:text-green-900 px-2 py-1 rounded text-xs border border-green-200 hover:bg-green-50">
-                        <i class="fas fa-check mr-1"></i> Approve
-                      </button>
-                      <button *ngIf="claim.status === 'Pending'" 
-                              (click)="rejectClaimModal(claim)" 
-                              class="text-red-600 hover:text-red-900 px-2 py-1 rounded text-xs border border-red-200 hover:bg-red-50">
-                        <i class="fas fa-times mr-1"></i> Reject
-                      </button>
-                      <button (click)="openAssignAgentClaimModal(claim._id || claim.id || '')" class="text-indigo-600 hover:text-indigo-900 px-2 py-1 rounded text-xs border border-indigo-200 hover:bg-indigo-50" title="Assign Agent">
-                        <i class="fas fa-user-plus mr-1"></i> Assign
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <ng-template #noClaims>
-            <div class="text-center py-8">
-              <i class="fas fa-file-invoice-dollar text-gray-400 text-4xl mb-4"></i>
-              <p class="text-gray-500 text-lg">No claims found</p>
-              <p class="text-gray-400 text-sm">Claims will appear here once customers file them</p>
-            </div>
-          </ng-template>
-        </section>
-
-        <!-- Payments Section -->
-        <section *ngIf="currentSection === 'payments'" class="p-6 bg-white shadow-md rounded-md mt-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">All Customer Payments</h2>
-            <div class="flex items-center space-x-4">
-              <!-- Payment Status Filter -->
-              <select [(ngModel)]="paymentStatusFilter" (change)="filterPayments()" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                <option value="">All Payments</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-              </select>
-              <!-- Refresh Button -->
-              <button (click)="loadPayments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm">
-                <i class="fas fa-sync-alt mr-2"></i>Refresh
-              </button>
-            </div>
-          </div>
-          
-          <!-- Loading State -->
-          <div *ngIf="loadingPayments" class="text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="mt-2 text-gray-600">Loading payments...</p>
-          </div>
-
-          <!-- Payments Table -->
-          <div *ngIf="!loadingPayments && filteredPayments.length > 0; else noPayments">
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div class="bg-green-50 border-l-4 border-green-500 p-4">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <i class="fas fa-dollar-sign text-green-600 text-2xl"></i>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">Total Payments</p>
-                    <p class="text-2xl font-bold text-green-900">${{paymentStats.totalAmount | number:'1.2-2'}}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-blue-600 text-2xl"></i>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-medium text-blue-800">Completed</p>
-                    <p class="text-2xl font-bold text-blue-900">{{paymentStats.completedCount}}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <i class="fas fa-clock text-yellow-600 text-2xl"></i>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-medium text-yellow-800">Pending</p>
-                    <p class="text-2xl font-bold text-yellow-900">{{paymentStats.pendingCount}}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Payments Table -->
-            <div class="overflow-x-auto">
-              <table class="table-auto w-full border-collapse border border-gray-300">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Payment ID</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Customer</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Policy</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Amount</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Method</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Reference</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Status</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Date</th>
-                    <th class="border border-gray-300 px-4 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let payment of filteredPayments" class="hover:bg-gray-50">
-                    <td class="border border-gray-300 px-4 py-2 font-mono text-sm">{{payment._id | slice:0:8}}...</td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <div class="flex items-center">
-                        <div class="flex-shrink-0 h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                          <i class="fas fa-user text-gray-600 text-sm"></i>
-                        </div>
-                        <div class="ml-3">
-                          <p class="text-sm font-medium text-gray-900">{{payment.userId?.name || 'Unknown'}}</p>
-                          <p class="text-sm text-gray-500">{{payment.userId?.email || 'No email'}}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <div>
-                        <p class="text-sm font-medium text-gray-900">{{payment.userPolicyId?.policyProductId?.title || 'Unknown Policy'}}</p>
-                        <p class="text-sm text-gray-500">{{payment.userPolicyId?.policyProductId?.code || 'No code'}}</p>
-                      </div>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <span class="text-lg font-bold text-green-600">${{payment.amount | number:'1.2-2'}}</span>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <span class="px-2 py-1 rounded text-xs font-medium"
-                            [ngClass]="{
-                              'bg-blue-100 text-blue-800': payment.method === 'Card',
-                              'bg-purple-100 text-purple-800': payment.method === 'Netbanking',
-                              'bg-gray-100 text-gray-800': payment.method === 'Offline',
-                              'bg-yellow-100 text-yellow-800': payment.method === 'Simulated'
-                            }">
-                        <i class="fas" [ngClass]="{
-                              'fa-credit-card': payment.method === 'Card',
-                              'fa-university': payment.method === 'Netbanking',
-                              'fa-store': payment.method === 'Offline',
-                              'fa-cog': payment.method === 'Simulated'
-                            }"></i>
-                        {{payment.method}}
-                      </span>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <span class="font-mono text-sm">{{payment.reference || 'N/A'}}</span>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <span class="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                        <i class="fas fa-check-circle mr-1"></i>COMPLETED
-                      </span>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <div>
-                        <p class="text-sm text-gray-900">{{payment.createdAt | date:'short'}}</p>
-                        <p class="text-xs text-gray-500">{{payment.createdAt | date:'MMMM d, y'}}</p>
-                      </div>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2">
-                      <div class="flex space-x-2">
-                        <button (click)="viewPaymentDetails(payment)" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">
-                          <i class="fas fa-eye mr-1"></i>View
-                        </button>
-                        <button (click)="downloadPaymentReceipt(payment)" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs">
-                          <i class="fas fa-download mr-1"></i>Receipt
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="flex items-center justify-between mt-6">
-              <div class="flex items-center text-sm text-gray-500">
-                Showing {{((currentPage - 1) * pageSize) + 1}} to {{Math.min(currentPage * pageSize, filteredPayments.length)}} of {{filteredPayments.length}} payments
-              </div>
-              <div class="flex items-center space-x-2">
-                <button (click)="previousPage()" 
-                        [disabled]="currentPage === 1"
-                        class="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                  <i class="fas fa-chevron-left mr-1"></i>Previous
-                </button>
-                <span class="px-3 py-2 text-sm">Page {{currentPage}} of {{totalPages}}</span>
-                <button (click)="nextPage()" 
-                        [disabled]="currentPage === totalPages"
-                        class="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                  Next<i class="fas fa-chevron-right ml-1"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- No Payments Template -->
-          <ng-template #noPayments>
-            <div class="text-center py-12">
-              <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
-                <i class="fas fa-credit-card text-2xl text-gray-400"></i>
-              </div>
-              <h3 class="text-lg font-medium text-gray-900 mb-2">No payments found</h3>
-              <p class="text-gray-500 mb-4">{{paymentStatusFilter ? 'No ' + paymentStatusFilter + ' payments available.' : 'No customer payments have been made yet.'}}</p>
-              <button (click)="loadPayments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                <i class="fas fa-sync-alt mr-2"></i>Refresh Payments
-              </button>
-            </div>
-          </ng-template>
-        </section>
-
-        <!-- Customer Details Section -->
-        <section *ngIf="currentSection === 'customerDetails'" class="p-6 bg-white shadow-md rounded-md mt-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-semibold text-gray-900">Customer Details - Policy Holders</h2>
-            <div class="flex items-center space-x-4">
-              <!-- Search Filter -->
-              <div class="relative">
-                <input [(ngModel)]="customerSearchTerm" (input)="filterCustomers()" 
-                       placeholder="Search customers..." 
-                       class="border border-gray-300 rounded-md px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
-              </div>
-              <!-- Status Filter -->
-              <select [(ngModel)]="customerStatusFilter" (change)="filterCustomers()" 
-                      class="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                <option value="">All Customers</option>
-                <option value="active">Active Policies</option>
-                <option value="approved">Approved Only</option>
-                <option value="pending">Pending Only</option>
-              </select>
-              <!-- Refresh Button -->
-              <button (click)="loadCustomerDetails()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm">
-                <i class="fas fa-sync-alt mr-2"></i>Refresh
-              </button>
-            </div>
-          </div>
-          
-          <!-- Loading State -->
-          <div *ngIf="loadingCustomers" class="text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="mt-2 text-gray-600">Loading customer details...</p>
-          </div>
-
-          <!-- Customer Summary Cards -->
-          <div *ngIf="!loadingCustomers && customerDetails.length > 0" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <i class="fas fa-users text-blue-600 text-2xl"></i>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-blue-800">Total Customers</p>
-                  <p class="text-2xl font-bold text-blue-900">{{customerStats.totalCustomers}}</p>
-                </div>
-              </div>
-            </div>
-            <div class="bg-green-50 border-l-4 border-green-500 p-4">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <i class="fas fa-shield-alt text-green-600 text-2xl"></i>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-green-800">Active Policies</p>
-                  <p class="text-2xl font-bold text-green-900">{{customerStats.activePolicies}}</p>
-                </div>
-              </div>
-            </div>
-            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <i class="fas fa-clock text-yellow-600 text-2xl"></i>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-yellow-800">Pending Policies</p>
-                  <p class="text-2xl font-bold text-yellow-900">{{customerStats.pendingPolicies}}</p>
-                </div>
-              </div>
-            </div>
-            <div class="bg-purple-50 border-l-4 border-purple-500 p-4">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <i class="fas fa-dollar-sign text-purple-600 text-2xl"></i>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm font-medium text-purple-800">Total Premium</p>
-                  <p class="text-2xl font-bold text-purple-900">${{customerStats.totalPremium | number:'1.2-2'}}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Customers Table -->
-          <div *ngIf="!loadingCustomers && filteredCustomerDetails.length > 0; else noCustomers" class="overflow-x-auto">
-            <table class="table-auto w-full border-collapse border border-gray-300">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Customer Info</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Contact Details</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Policies</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Total Premium</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Payments Made</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Join Date</th>
-                  <th class="border border-gray-300 px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let customer of paginatedCustomers" class="hover:bg-gray-50">
-                  <!-- Customer Info -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="flex items-center">
-                      <div class="flex-shrink-0 h-12 w-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">{{(customer.customer.name || 'U').charAt(0).toUpperCase()}}</span>
-                      </div>
-                      <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">{{customer.customer.name || 'Unknown'}}</div>
-                        <div class="text-sm text-gray-500">ID: {{customer.customer._id | slice:0:8}}...</div>
-                        <div class="text-xs text-gray-400">{{customer.customer.role || 'Customer'}}</div>
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <!-- Contact Details -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="text-sm text-gray-900">
-                      <div class="flex items-center mb-1">
-                        <i class="fas fa-envelope text-gray-400 mr-2"></i>
-                        <span>{{customer.customer.email || 'No email'}}</span>
-                      </div>
-                      <div class="flex items-center">
-                        <i class="fas fa-phone text-gray-400 mr-2"></i>
-                        <span>{{customer.customer.phone || 'No phone'}}</span>
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <!-- Policies -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="space-y-1">
-                      <div class="text-sm font-medium text-gray-900">
-                        {{customer.policies.length}} Policies
-                      </div>
-                      <div *ngFor="let policy of customer.policies.slice(0, 2)" class="text-xs">
-                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium mr-1"
-                              [ngClass]="{
-                                'bg-green-100 text-green-800': policy.status === 'Approved',
-                                'bg-yellow-100 text-yellow-800': policy.status === 'Pending',
-                                'bg-red-100 text-red-800': policy.status === 'Cancelled',
-                                'bg-blue-100 text-blue-800': policy.status === 'Active'
-                              }">
-                          {{policy.policyProductId?.title || 'Unknown Policy'}} - {{policy.status}}
-                        </span>
-                      </div>
-                      <div *ngIf="customer.policies.length > 2" class="text-xs text-gray-500">
-                        +{{customer.policies.length - 2}} more
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <!-- Total Premium -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="text-sm">
-                      <div class="text-lg font-bold text-green-600">
-                        ${{customer.totalPremium | number:'1.2-2'}}
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        Paid: ${{customer.totalPaid | number:'1.2-2'}}
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <!-- Payments Made -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="text-sm">
-                      <div class="font-medium text-gray-900">
-                        {{customer.payments.length}} Payments
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        Last: {{customer.payments.length > 0 ? (customer.payments[0].createdAt | date:'short') : 'Never'}}
-                      </div>
-                      <div class="text-xs text-green-600">
-                        ${{customer.payments.reduce(sumPayments, 0) | number:'1.2-2'}} total
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <!-- Join Date -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="text-sm text-gray-900">
-                      {{customer.customer.createdAt | date:'short'}}
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{customer.customer.createdAt | date:'MMMM d, y'}}
-                    </div>
-                  </td>
-                  
-                  <!-- Actions -->
-                  <td class="border border-gray-300 px-4 py-4">
-                    <div class="flex space-x-2">
-                      <button (click)="viewCustomerDetails(customer)" 
-                              class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">
-                        <i class="fas fa-eye mr-1"></i>View
-                      </button>
-                      <button (click)="viewCustomerPolicies(customer)" 
-                              class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs">
-                        <i class="fas fa-shield-alt mr-1"></i>Policies
-                      </button>
-                      <button (click)="viewCustomerPayments(customer)" 
-                              class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-xs">
-                        <i class="fas fa-credit-card mr-1"></i>Payments
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <!-- Pagination for Customers -->
-            <div class="flex items-center justify-between mt-6">
-              <div class="flex items-center text-sm text-gray-500">
-                Showing {{((customerCurrentPage - 1) * customerPageSize) + 1}} to {{Math.min(customerCurrentPage * customerPageSize, filteredCustomerDetails.length)}} of {{filteredCustomerDetails.length}} customers
-              </div>
-              <div class="flex items-center space-x-2">
-                <button (click)="previousCustomerPage()" 
-                        [disabled]="customerCurrentPage === 1"
-                        class="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                  <i class="fas fa-chevron-left mr-1"></i>Previous
-                </button>
-                <span class="px-3 py-2 text-sm">Page {{customerCurrentPage}} of {{customerTotalPages}}</span>
-                <button (click)="nextCustomerPage()" 
-                        [disabled]="customerCurrentPage === customerTotalPages"
-                        class="px-3 py-2 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                  Next<i class="fas fa-chevron-right ml-1"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- No Customers Template -->
-          <ng-template #noCustomers>
-            <div class="text-center py-12">
-              <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
-                <i class="fas fa-user-friends text-2xl text-gray-400"></i>
-              </div>
-              <h3 class="text-lg font-medium text-gray-900 mb-2">No customers with policies found</h3>
-              <p class="text-gray-500 mb-4">No customers have purchased policies yet.</p>
-              <button (click)="loadCustomerDetails()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                <i class="fas fa-sync-alt mr-2"></i>Refresh Customer Data
-              </button>
-            </div>
-          </ng-template>
-        </section>
+        </div>
       </div>
-    </main>
+    </div>
   </div>
+    
 
-  <!-- Claim Approval Modal -->
-  <div *ngIf="showClaimApprovalModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Approve Claim</h3>
+  <!-- Agent View Modal -->
+    <div *ngIf="showAgentViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeAgentViewModal()">
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Agent Details</h3>
+          <button (click)="closeAgentViewModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div class="grid grid-cols-1 gap-3 text-sm">
+          <div><span class="font-medium text-slate-700">Agent ID:</span> {{ selectedAgentView?._id }}</div>
+          <div><span class="font-medium text-slate-700">Agent Code:</span> {{ selectedAgentView?.agentCode || '—' }}</div>
+          <div><span class="font-medium text-slate-700">Name:</span> {{ selectedAgentView?.name }}</div>
+          <div><span class="font-medium text-slate-700">Email:</span> {{ selectedAgentView?.email }}</div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button (click)="closeAgentViewModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
+        </div>
       </div>
-      <div class="px-6 py-4">
-        <div class="mb-4">
-          <p class="text-sm text-gray-600 mb-2">Are you sure you want to approve this claim?</p>
-          <div class="bg-gray-50 p-3 rounded-lg">
-            <p><strong>Claim ID:</strong> {{selectedClaim?._id?.substring(selectedClaim._id.length - 8)}}</p>
-            <p><strong>Customer:</strong> {{selectedClaim?.userId?.name}}</p>
-            <p><strong>Amount:</strong> ${{selectedClaim?.amountClaimed | number:'1.2-2'}}</p>
+    </div>
+
+    <!-- Policy Product View Modal -->
+    <div *ngIf="showPolicyProductViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closePolicyProductViewModal()">
+      <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Policy Product Details</h3>
+          <button (click)="closePolicyProductViewModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" *ngIf="selectedPolicyProductView as p">
+          <div class="space-y-1">
+            <div><span class="font-medium text-slate-700">Code:</span> {{ p.code }}</div>
+            <div><span class="font-medium text-slate-700">Title:</span> {{ p.title }}</div>
+            <div><span class="font-medium text-slate-700">Premium:</span> ₹{{ p.premium }}</div>
+            <div><span class="font-medium text-slate-700">Term:</span> {{ p.termMonths }} months</div>
+          </div>
+          <div class="space-y-1">
+            <div><span class="font-medium text-slate-700">Min Sum Insured:</span> ₹{{ p.minSumInsured ?? 0 }}</div>
+            <div><span class="font-medium text-slate-700">Max Sum Insured:</span> ₹{{ p.maxSumInsured ?? 0 }}</div>
+            <div><span class="font-medium text-slate-700">Assigned Agent:</span> {{ p.assignedAgentName || '—' }}</div>
+          </div>
+          <div class="md:col-span-2">
+            <div class="mt-2 text-[13px] text-slate-700 whitespace-pre-line"><span class="font-medium text-slate-700">Description:</span> {{ p.description || '—' }}</div>
           </div>
         </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Decision Notes</label>
-          <textarea [(ngModel)]="claimDecisionNotes" rows="3" 
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Optional notes about the approval decision"></textarea>
+        <div class="mt-6 flex justify-end">
+          <button (click)="closePolicyProductViewModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-        <button (click)="closeClaimModal()" 
-                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-200">
+    </div>
+
+    <!-- Claim View Modal -->
+    <div *ngIf="showClaimViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeClaimViewModal()">
+      <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">Claim Details</h3>
+          <button (click)="closeClaimViewModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" *ngIf="selectedClaimView as c">
+          <div class="space-y-1">
+            <div><span class="font-medium text-slate-700">Claim ID:</span> {{ c._id }}</div>
+            <div><span class="font-medium text-slate-700">User:</span> {{ c.userId?.name || c.userId?.email || c.userId }}</div>
+            <div><span class="font-medium text-slate-700">Policy:</span> {{ c.userPolicyId?._id || c.userPolicyId }}</div>
+            <div><span class="font-medium text-slate-700">Status:</span> {{ c.status }}</div>
+          </div>
+          <div class="space-y-1">
+            <div><span class="font-medium text-slate-700">Incident Date:</span> {{ c.incidentDate | date: 'mediumDate' }}</div>
+            <div><span class="font-medium text-slate-700">Amount Claimed:</span> ₹{{ c.amountClaimed }}</div>
+            <div><span class="font-medium text-slate-700">Decision Notes:</span> {{ c.decisionNotes || '—' }}</div>
+          </div>
+          <div class="md:col-span-2">
+            <div class="mt-2 text-[13px] text-slate-700 whitespace-pre-line"><span class="font-medium text-slate-700">Description:</span> {{ c.description || '—' }}</div>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button (click)="closeClaimViewModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Close</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Confirmation Modal -->
+  <div *ngIf="showConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="cancelAction()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+      <div class="mb-4 flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-full"
+          [ngClass]="{
+            'bg-emerald-100': pendingAction?.action?.includes('approve'),
+            'bg-rose-100': pendingAction?.action?.includes('reject')
+          }">
+          <svg class="h-5 w-5" 
+            [ngClass]="{
+              'text-emerald-600': pendingAction?.action?.includes('approve'),
+              'text-rose-600': pendingAction?.action?.includes('reject')
+            }" 
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path *ngIf="pendingAction?.action?.includes('approve')" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path *ngIf="pendingAction?.action?.includes('reject')" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-800">{{ confirmModalData?.title }}</h3>
+      </div>
+      <div class="mb-6">
+        <p class="text-slate-600 mb-3">{{ confirmModalData?.message }}</p>
+        <div class="bg-slate-50 rounded-lg p-3 text-sm text-slate-700">
+          <div *ngIf="confirmModalData?.detail1">{{ confirmModalData?.detail1 }}</div>
+          <div *ngIf="confirmModalData?.detail2">{{ confirmModalData?.detail2 }}</div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button (click)="cancelAction()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 transition-colors">
           Cancel
         </button>
-        <button (click)="processClaimDecision('Approved')" 
-                class="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200">
-          <i class="fas fa-check mr-2"></i>Approve Claim
+        <button (click)="confirmAction()" class="rounded-full px-4 py-2 text-white shadow-sm transition-colors"
+          [ngClass]="{
+            'bg-emerald-600 hover:bg-emerald-700': pendingAction?.action?.includes('approve'),
+            'bg-rose-600 hover:bg-rose-700': pendingAction?.action?.includes('reject')
+          }">
+          {{ pendingAction?.action?.includes('approve') ? 'Approve' : 'Reject' }}
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Claim Rejection Modal -->
-  <div *ngIf="showClaimRejectionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Reject Claim</h3>
+  <!-- Claim Edit Modal -->
+  <div *ngIf="editingClaim" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeEditClaim()">
+    <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-slate-800">Edit Claim</h3>
+        <button (click)="closeEditClaim()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
       </div>
-      <div class="px-6 py-4">
-        <div class="mb-4">
-          <p class="text-sm text-gray-600 mb-2">Are you sure you want to reject this claim?</p>
-          <div class="bg-gray-50 p-3 rounded-lg">
-            <p><strong>Claim ID:</strong> {{selectedClaim?._id?.substring(selectedClaim._id.length - 8)}}</p>
-            <p><strong>Customer:</strong> {{selectedClaim?.userId?.name}}</p>
-            <p><strong>Amount:</strong> ${{selectedClaim?.amountClaimed | number:'1.2-2'}}</p>
-          </div>
+      <div class="grid grid-cols-1 gap-3 text-sm">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Incident Date</label>
+          <input type="date" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="claimForm.incidentDate" [ngModelOptions]="{standalone:true}" />
         </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection <span class="text-red-500">*</span></label>
-          <textarea [(ngModel)]="claimDecisionNotes" rows="3" required
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Please provide a reason for rejecting this claim"></textarea>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Amount Claimed</label>
+          <input type="number" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="claimForm.amountClaimed" [ngModelOptions]="{standalone:true}" placeholder="0" />
         </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Description</label>
+          <textarea rows="3" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="claimForm.description" [ngModelOptions]="{standalone:true}" placeholder="Describe the incident..."></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Decision Notes</label>
+          <textarea rows="2" class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="claimForm.decisionNotes" [ngModelOptions]="{standalone:true}" placeholder="Internal notes (optional)"></textarea>
+        </div>
+        <div *ngIf="actionError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800">{{ actionError }}</div>
       </div>
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-        <button (click)="closeClaimModal()" 
-                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-200">
-          Cancel
-        </button>
-        <button (click)="processClaimDecision('Rejected')" 
-                class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200">
-          <i class="fas fa-times mr-2"></i>Reject Claim
-        </button>
+      <div class="mt-6 flex justify-end gap-2">
+        <button (click)="closeEditClaim()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Cancel</button>
+        <button (click)="saveClaimEdit()" class="rounded-full bg-emerald-600 px-4 py-2 text-white shadow-sm ring-1 ring-emerald-500/50 hover:bg-emerald-700">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- Claim Details Modal -->
-  <div *ngIf="showClaimDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Claim Details</h3>
+  <!-- Unassign Agent Confirmation Modal (global) -->
+  <div *ngIf="showUnassignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="!unassignLoading && closeUnassignModal()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-slate-800">Remove Assigned Agent</h3>
+        <button (click)="closeUnassignModal()" [disabled]="unassignLoading" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50">✕</button>
       </div>
-      <div class="px-6 py-4 max-h-96 overflow-y-auto">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 class="font-medium text-gray-900 mb-2">Claim Information</h4>
-            <div class="space-y-2 text-sm">
-              <p><strong>Claim ID:</strong> {{selectedClaim?._id}}</p>
-              <p><strong>Status:</strong> 
-                <span class="px-2 py-1 rounded text-xs"
-                      [class.bg-yellow-100]="selectedClaim?.status === 'Pending'"
-                      [class.text-yellow-800]="selectedClaim?.status === 'Pending'"
-                      [class.bg-green-100]="selectedClaim?.status === 'Approved'"
-                      [class.text-green-800]="selectedClaim?.status === 'Approved'"
-                      [class.bg-red-100]="selectedClaim?.status === 'Rejected'"
-                      [class.text-red-800]="selectedClaim?.status === 'Rejected'">
-                  {{selectedClaim?.status}}
-                </span>
-              </p>
-              <p><strong>Amount Claimed:</strong> ${{selectedClaim?.amountClaimed | number:'1.2-2'}}</p>
-              <p><strong>Incident Date:</strong> {{selectedClaim?.incidentDate | date:'mediumDate'}}</p>
-              <p><strong>Filed Date:</strong> {{selectedClaim?.createdAt | date:'medium'}}</p>
-            </div>
-          </div>
-          <div>
-            <h4 class="font-medium text-gray-900 mb-2">Customer Information</h4>
-            <div class="space-y-2 text-sm">
-              <p><strong>Name:</strong> {{selectedClaim?.userId?.name}}</p>
-              <p><strong>Email:</strong> {{selectedClaim?.userId?.email}}</p>
-              <p><strong>Phone:</strong> {{selectedClaim?.userId?.phone}}</p>
-            </div>
-          </div>
-          <div>
-            <h4 class="font-medium text-gray-900 mb-2">Policy Information</h4>
-            <div class="space-y-2 text-sm">
-              <p><strong>Policy:</strong> {{selectedClaim?.userPolicyId?.policyProductId?.title}}</p>
-              <p><strong>Code:</strong> {{selectedClaim?.userPolicyId?.policyProductId?.code}}</p>
-              <p><strong>Coverage:</strong> ${{selectedClaim?.userPolicyId?.policyProductId?.minSumInsured | number}}</p>
-            </div>
-          </div>
-          <div>
-            <h4 class="font-medium text-gray-900 mb-2">Incident Details</h4>
-            <div class="space-y-2 text-sm">
-              <p><strong>Type:</strong> {{selectedClaim?.incidentType}}</p>
-            </div>
-          </div>
+      <div class="space-y-4 text-sm text-slate-700">
+        <p>Are you sure you want to remove the agent from this policy?</p>
+        <div class="rounded-xl bg-slate-50 p-4 text-xs text-slate-600 ring-1 ring-slate-200" *ngIf="unassignTarget">
+          <div><span class="font-semibold text-slate-700">Policy Code:</span> {{ unassignTarget?.code }}</div>
+          <div><span class="font-semibold text-slate-700">Policy Title:</span> {{ unassignTarget?.title || '—' }}</div>
+          <div><span class="font-semibold text-slate-700">Current Agent:</span> {{ unassignTarget?.assignedAgentName || '—' }}</div>
         </div>
-        <div class="mt-4">
-          <h4 class="font-medium text-gray-900 mb-2">Description</h4>
-          <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{{selectedClaim?.description}}</p>
-        </div>
-        <div *ngIf="selectedClaim?.decisionNotes" class="mt-4">
-          <h4 class="font-medium text-gray-900 mb-2">Decision Notes</h4>
-          <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{{selectedClaim?.decisionNotes}}</p>
+        <div *ngIf="unassignError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800">{{ unassignError }}</div>
+        <div class="flex items-center gap-2 text-xs" *ngIf="unassignLoading">
+          <svg class="h-4 w-4 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span>Removing...</span>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-        <button (click)="closeClaimDetailsModal()" 
-                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-200">
-          Close
+      <div class="mt-6 flex justify-end gap-2">
+        <button (click)="closeUnassignModal()" [disabled]="unassignLoading" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 disabled:opacity-50">Cancel</button>
+        <button (click)="confirmUnassignAgent()" [disabled]="unassignLoading" class="rounded-full bg-rose-600 px-4 py-2 text-white shadow-sm ring-1 ring-rose-500/50 hover:bg-rose-700 disabled:opacity-50">{{ unassignLoading ? 'Removing...' : 'Remove' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign Agent Modal (global) -->
+  <div *ngIf="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeAssignModal()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-slate-800">Assign Agent</h3>
+        <button (click)="closeAssignModal()" class="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-800">✕</button>
+      </div>
+      <div class="space-y-4">
+        <div class="text-sm text-slate-600">
+          <div><span class="font-medium text-slate-700">Policy:</span> {{ selectedPolicy?.title || selectedPolicy?.code }}</div>
+          <div *ngIf="selectedPolicy?.assignedAgentName"><span class="font-medium text-slate-700">Current Agent:</span> {{ selectedPolicy?.assignedAgentName }}</div>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Select Agent</label>
+          <select class="w-full rounded-xl border border-slate-300 p-2.5" [(ngModel)]="selectedAgentId" [ngModelOptions]="{standalone:true}">
+            <option value="">-- choose agent --</option>
+            <option *ngFor="let a of agentList" [value]="a._id">{{ a.name }} ({{ a.email }})</option>
+          </select>
+        </div>
+        <div *ngIf="assignError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-sm shadow-sm">{{ assignError }}</div>
+      </div>
+      <div class="mt-6 flex justify-end gap-2">
+        <button (click)="closeAssignModal()" class="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200">Cancel</button>
+        <button (click)="assignAgent()" class="rounded-full bg-indigo-600 px-4 py-2 text-white shadow-sm ring-1 ring-indigo-500/50 hover:bg-indigo-700">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div *ngIf="showSuccessModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" (click)="closeSuccessModal()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" (click)="$event.stopPropagation()">
+      <div class="mb-4 flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+          <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-800">{{ successModalData?.title }}</h3>
+      </div>
+      <div class="mb-6">
+        <p class="text-slate-600">{{ successModalData?.message }}</p>
+      </div>
+      <div class="flex justify-end">
+        <button (click)="closeSuccessModal()" class="rounded-full bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700 transition-colors">
+          OK
         </button>
       </div>
     </div>

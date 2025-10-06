@@ -18,7 +18,7 @@ const PaymentSchema = new mongoose.Schema({
 	},
 	method: {
 		type: String,
-		enum: ['Card', 'Netbanking', 'Offline', 'Simulated'],
+		enum: ['Card', 'Netbanking', 'Offline', 'UPI', 'Simulated'],
 		default: 'Simulated'
 	},
 	reference: {

@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
+const allowedNomineeRelations = ['Spouse','Parent','Child','Sibling','Relative','Friend','Other'];
 const NomineeSchema = new mongoose.Schema({
-  name: String,
-  relation: String
+  name: { type: String },
+  relation: { type: String, enum: allowedNomineeRelations }
 });
 
 const UserPolicySchema = new mongoose.Schema({
@@ -31,7 +32,7 @@ const UserPolicySchema = new mongoose.Schema({
   endDate: 
   { 
     type: Date, 
-    required: false  // Made optional to allow backend calculation
+    required: true 
 },
   premiumPaid: 
   { 
@@ -43,10 +44,6 @@ const UserPolicySchema = new mongoose.Schema({
     type: String, 
     enum: ['Pending','Approved','Cancelled','Expired','Claimed'], 
     default: 'Pending' 
-  },
-  approved: {
-    type: Boolean,
-    default: false
   },
   assignedAgentId: 
   { 
